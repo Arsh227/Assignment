@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import Navigation from './components/Navigation'
 import Hero from './components/Hero'
 import Projects from './components/Projects'
@@ -188,6 +189,7 @@ function App() {
         <Footer />
       </motion.div>
       {showBackToTop && <BackToTop />}
+      <SpeedInsights />
     </motion.div>
   )
 }
