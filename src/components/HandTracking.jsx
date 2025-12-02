@@ -46,38 +46,62 @@ const HandTracking = () => {
         const handsModule = await import('@mediapipe/hands')
         const cameraModule = await import('@mediapipe/camera_utils')
         
+        // Log full module structure
         console.log('Raw handsModule:', handsModule)
-        console.log('Raw cameraModule:', cameraModule)
+        console.log('handsModule keys:', Object.keys(handsModule))
+        console.log('handsModule.default:', handsModule.default)
+        console.log('handsModule.Hands:', handsModule.Hands)
+        console.log('typeof handsModule:', typeof handsModule)
         
-        // Try to get Hands - it might be in different places after bundling
+        console.log('Raw cameraModule:', cameraModule)
+        console.log('cameraModule keys:', Object.keys(cameraModule))
+        
+        // Try to get Hands - check all possible locations
         let Hands = null
+        
+        // Method 1: Direct export
         if (handsModule.Hands) {
           Hands = handsModule.Hands
-        } else if (handsModule.default && handsModule.default.Hands) {
-          Hands = handsModule.default.Hands
-        } else if (handsModule.default && typeof handsModule.default === 'function') {
-          Hands = handsModule.default
-        } else if (typeof handsModule === 'function') {
+          console.log('Found Hands via handsModule.Hands')
+        }
+        // Method 2: Default export with Hands property
+        else if (handsModule.default) {
+          if (handsModule.default.Hands) {
+            Hands = handsModule.default.Hands
+            console.log('Found Hands via handsModule.default.Hands')
+          } else if (typeof handsModule.default === 'function') {
+            Hands = handsModule.default
+            console.log('Found Hands via handsModule.default (function)')
+          }
+        }
+        // Method 3: Check if module itself is the constructor
+        else if (typeof handsModule === 'function') {
           Hands = handsModule
+          console.log('Found Hands via handsModule (function)')
         }
         
         // Try to get Camera
         let CameraClass = null
         if (cameraModule.Camera) {
           CameraClass = cameraModule.Camera
-        } else if (cameraModule.default && cameraModule.default.Camera) {
-          CameraClass = cameraModule.default.Camera
-        } else if (cameraModule.default && typeof cameraModule.default === 'function') {
-          CameraClass = cameraModule.default
+          console.log('Found Camera via cameraModule.Camera')
+        } else if (cameraModule.default) {
+          if (cameraModule.default.Camera) {
+            CameraClass = cameraModule.default.Camera
+            console.log('Found Camera via cameraModule.default.Camera')
+          } else if (typeof cameraModule.default === 'function') {
+            CameraClass = cameraModule.default
+            console.log('Found Camera via cameraModule.default (function)')
+          }
         } else if (typeof cameraModule === 'function') {
           CameraClass = cameraModule
+          console.log('Found Camera via cameraModule (function)')
         }
         
         console.log('MediaPipe modules loaded:', { 
           Hands: !!Hands,
           HandsType: typeof Hands,
           HandsIsFunction: typeof Hands === 'function',
-          HandsConstructor: Hands?.prototype?.constructor,
           Camera: !!CameraClass,
           CameraType: typeof CameraClass,
           handsModuleKeys: Object.keys(handsModule),
@@ -85,7 +109,12 @@ const HandTracking = () => {
         })
         
         if (!Hands) {
-          console.error('Hands not found. Full module:', handsModule)
+          console.error('Hands not found. Full module structure:', {
+            keys: Object.keys(handsModule),
+            default: handsModule.default,
+            hasHands: 'Hands' in handsModule,
+            moduleType: typeof handsModule
+          })
           throw new Error('Hands class not found in MediaPipe module')
         }
         
