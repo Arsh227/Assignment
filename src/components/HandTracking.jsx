@@ -56,6 +56,11 @@ const HandTracking = () => {
 
       hands.onResults((results) => {
         try {
+          // Debug logging
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            console.log('Hand detected! Landmarks:', results.multiHandLandmarks[0].length)
+          }
+          
           // Clear canvas
           ctx.save()
           ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -69,6 +74,8 @@ const HandTracking = () => {
             const landmarks = results.multiHandLandmarks[0]
             handLandmarksRef.current = landmarks
 
+            console.log('Drawing landmarks, canvas size:', canvas.width, 'x', canvas.height)
+            
             // Draw hand landmarks
             drawHandLandmarks(ctx, landmarks, canvas.width, canvas.height)
             
@@ -184,12 +191,19 @@ const HandTracking = () => {
   }, [])
 
   const drawHandLandmarks = (ctx, landmarks, width, height) => {
-    // Make landmarks more visible
+    if (!landmarks || landmarks.length < 21) {
+      console.error('Invalid landmarks:', landmarks)
+      return
+    }
+    
+    console.log('Drawing landmarks on canvas:', width, 'x', height)
+    
+    // Make landmarks more visible - use bright green
     ctx.strokeStyle = '#00ff00'
     ctx.fillStyle = '#00ff00'
-    ctx.lineWidth = 3 // Increased line width for visibility
+    ctx.lineWidth = 4 // Increased line width for visibility
 
-    // Draw connections
+    // Draw connections - MediaPipe hand connections
     const connections = [
       [0, 1, 2, 3, 4], // Thumb
       [0, 5, 6, 7, 8], // Index
@@ -197,47 +211,69 @@ const HandTracking = () => {
       [0, 13, 14, 15, 16], // Ring
       [0, 17, 18, 19, 20], // Pinky
       [5, 9], [9, 13], [13, 17], // Base connections
+      [0, 5], [0, 9], [0, 13], [0, 17], // Wrist to finger bases
     ]
 
     connections.forEach(connection => {
       ctx.beginPath()
-      connection.forEach((pointIndex, i) => {
-        const point = landmarks[pointIndex]
-        const x = point.x * width
-        const y = point.y * height
-        if (i === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
+      let firstPoint = true
+      connection.forEach((pointIndex) => {
+        if (pointIndex < landmarks.length) {
+          const point = landmarks[pointIndex]
+          const x = point.x * width
+          const y = point.y * height
+          if (firstPoint) {
+            ctx.moveTo(x, y)
+            firstPoint = false
+          } else {
+            ctx.lineTo(x, y)
+          }
         }
       })
       ctx.stroke()
     })
 
-    // Draw key points
-    const keyPoints = [
-      { index: 4, color: '#ff0000', label: 'Thumb' }, // Thumb tip
-      { index: 8, color: '#00ffff', label: 'Index' }, // Index tip
-      { index: 12, color: '#ffff00', label: 'Middle' }, // Middle tip
-      { index: 16, color: '#ff00ff', label: 'Ring' }, // Ring tip
-      { index: 20, color: '#00ff00', label: 'Pinky' }, // Pinky tip
-    ]
-
-    keyPoints.forEach(({ index, color }) => {
-      const point = landmarks[index]
+    // Draw all landmarks as dots
+    landmarks.forEach((point, index) => {
       const x = point.x * width
       const y = point.y * height
       
-      ctx.fillStyle = color
+      // Draw a small dot for each landmark
+      ctx.fillStyle = '#00ff00'
       ctx.beginPath()
-      ctx.arc(x, y, 10, 0, Math.PI * 2) // Increased size for visibility
+      ctx.arc(x, y, 4, 0, Math.PI * 2)
       ctx.fill()
-      
-      // Add a border for better visibility
-      ctx.strokeStyle = '#ffffff'
-      ctx.lineWidth = 2
-      ctx.stroke()
     })
+
+    // Draw key points with colors
+    const keyPoints = [
+      { index: 4, color: '#ff0000', label: 'Thumb', size: 12 }, // Thumb tip
+      { index: 8, color: '#00ffff', label: 'Index', size: 12 }, // Index tip
+      { index: 12, color: '#ffff00', label: 'Middle', size: 12 }, // Middle tip
+      { index: 16, color: '#ff00ff', label: 'Ring', size: 12 }, // Ring tip
+      { index: 20, color: '#00ff00', label: 'Pinky', size: 12 }, // Pinky tip
+      { index: 0, color: '#ffffff', label: 'Wrist', size: 10 }, // Wrist
+    ]
+
+    keyPoints.forEach(({ index, color, size }) => {
+      if (index < landmarks.length) {
+        const point = landmarks[index]
+        const x = point.x * width
+        const y = point.y * height
+        
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.arc(x, y, size, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // Add a border for better visibility
+        ctx.strokeStyle = '#000000'
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+    })
+    
+    console.log('Finished drawing landmarks')
   }
 
   const processGestures = (landmarks, width, height) => {
