@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Hands } from '@mediapipe/hands'
-import { Camera } from '@mediapipe/camera_utils'
+import * as HandsModule from '@mediapipe/hands'
+import * as CameraModule from '@mediapipe/camera_utils'
 
 const HandTracking = () => {
   const videoRef = useRef(null)
@@ -39,20 +39,39 @@ const HandTracking = () => {
     let hands = null
     let camera = null
     
-    // Initialize MediaPipe Hands - using static imports
+    // Initialize MediaPipe Hands - using namespace imports
     const initializeMediaPipe = () => {
       try {
         console.log('Initializing MediaPipe Hands...')
+        console.log('HandsModule:', HandsModule)
+        console.log('HandsModule keys:', Object.keys(HandsModule))
+        console.log('CameraModule:', CameraModule)
+        console.log('CameraModule keys:', Object.keys(CameraModule))
+        
+        // Get Hands from module
+        const Hands = HandsModule.Hands || HandsModule.default?.Hands || HandsModule.default
+        const Camera = CameraModule.Camera || CameraModule.default?.Camera || CameraModule.default
+        
         console.log('Hands class:', Hands)
         console.log('Hands type:', typeof Hands)
         console.log('Camera class:', Camera)
         console.log('Camera type:', typeof Camera)
         
         if (!Hands || typeof Hands !== 'function') {
+          console.error('HandsModule structure:', {
+            keys: Object.keys(HandsModule),
+            default: HandsModule.default,
+            Hands: HandsModule.Hands
+          })
           throw new Error(`Hands is not a constructor. Type: ${typeof Hands}`)
         }
         
         if (!Camera || typeof Camera !== 'function') {
+          console.error('CameraModule structure:', {
+            keys: Object.keys(CameraModule),
+            default: CameraModule.default,
+            Camera: CameraModule.Camera
+          })
           throw new Error(`Camera is not a constructor. Type: ${typeof Camera}`)
         }
         
