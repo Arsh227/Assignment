@@ -46,8 +46,9 @@ const HandTracking = () => {
         const handsModule = await import('@mediapipe/hands')
         const cameraModule = await import('@mediapipe/camera_utils')
         
-        const Hands = handsModule.Hands || handsModule.default?.Hands || handsModule.default
-        const Camera = cameraModule.Camera || cameraModule.default?.Camera || cameraModule.default
+        // Hands is exported directly - check node output: Hands: [Function: od]
+        const Hands = handsModule.Hands
+        const CameraClass = cameraModule.Camera
         
         console.log('MediaPipe modules loaded:', { 
           Hands: !!Hands, 
