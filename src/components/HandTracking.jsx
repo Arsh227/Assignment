@@ -390,18 +390,13 @@ const HandTracking = () => {
     const ringPip = landmarks[14]
     const pinkyPip = landmarks[18]
 
-    // Get canvas position relative to viewport
-    const canvas = canvasRef.current
-    if (!canvas) return
-    
-    const rect = canvas.getBoundingClientRect()
-    
-    // Convert normalized coordinates to viewport coordinates
-    // MediaPipe gives normalized coordinates (0-1), we need to map to viewport
+    // Convert normalized coordinates to FULL VIEWPORT coordinates
+    // MediaPipe gives normalized coordinates (0-1), we map to entire screen
     // Invert X coordinate because camera is mirrored (left-right flip)
     // Invert Y coordinate because camera is mirrored (up-down flip)
-    const indexX = rect.left + ((1 - indexTip.x) * rect.width)
-    const indexY = rect.top + ((1 - indexTip.y) * rect.height)
+    // Map to entire viewport, not just canvas area
+    const indexX = (1 - indexTip.x) * window.innerWidth
+    const indexY = (1 - indexTip.y) * window.innerHeight
     
     // Update virtual cursor position (index finger controls cursor)
     virtualCursorRef.current = { x: indexX, y: indexY }
@@ -510,7 +505,7 @@ const HandTracking = () => {
   }
 
   const moveVirtualCursor = (x, y) => {
-    // Constrain cursor to viewport
+    // Constrain cursor to viewport (full screen, not just canvas)
     const constrainedX = Math.max(0, Math.min(x, window.innerWidth))
     const constrainedY = Math.max(0, Math.min(y, window.innerHeight))
     
@@ -528,11 +523,12 @@ const HandTracking = () => {
         height: 20px;
         border: 2px solid #00ffff;
         border-radius: 50%;
-        background: rgba(0, 255, 255, 0.3);
+        background: rgba(0, 255, 255, 0.5);
         pointer-events: none;
         z-index: 99999;
         transform: translate(-50%, -50%);
         transition: none;
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
       `
       document.body.appendChild(cursor)
     }
@@ -544,7 +540,7 @@ const HandTracking = () => {
         const target = targetCursorPositionRef.current
         
         // Smooth interpolation (easing factor for smooth movement)
-        const easing = 0.15
+        const easing = 0.2 // Slightly faster for better responsiveness
         const dx = target.x - current.x
         const dy = target.y - current.y
         
@@ -556,6 +552,7 @@ const HandTracking = () => {
           cursor.style.top = `${current.y}px`
           
           // Dispatch mouse move events to all elements along the path
+          // This works across the entire page, not just canvas area
           const elementBelow = document.elementFromPoint(current.x, current.y)
           if (elementBelow && elementBelow !== cursor && isSafeElement(elementBelow)) {
             // Dispatch to the element
@@ -581,12 +578,14 @@ const HandTracking = () => {
           
           animationFrameRef.current = requestAnimationFrame(animateCursor)
         } else {
-          // Reached target, stop animation
+          // Reached target, but keep animating for continuous updates
           current.x = target.x
           current.y = target.y
           cursor.style.left = `${current.x}px`
           cursor.style.top = `${current.y}px`
-          animationFrameRef.current = null
+          
+          // Continue animation to handle new target positions
+          animationFrameRef.current = requestAnimationFrame(animateCursor)
         }
       }
       animationFrameRef.current = requestAnimationFrame(animateCursor)
