@@ -95,13 +95,11 @@ const HandTracking = () => {
         }
         
         // Verify it's actually a constructor
-        try {
-          console.log('Testing Hands constructor...')
-          // Don't actually create it yet, just verify
-          const testProto = Hands.prototype
-          console.log('Hands.prototype:', testProto)
-          console.log('Creating Hands instance...')
-          hands = new Hands({
+        console.log('Testing Hands constructor...')
+        const testProto = Hands.prototype
+        console.log('Hands.prototype:', testProto)
+        console.log('Creating Hands instance...')
+        hands = new Hands({
           locateFile: (file) => {
             const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
             console.log('Loading MediaPipe file:', file, 'from', url)
@@ -111,7 +109,7 @@ const HandTracking = () => {
 
         console.log('MediaPipe Hands instance created')
 
-      hands.setOptions({
+        hands.setOptions({
         maxNumHands: 1,
         modelComplexity: 1,
         minDetectionConfidence: 0.3, // Lowered for easier detection
@@ -263,12 +261,12 @@ const HandTracking = () => {
         canvas.width = rect.width
         canvas.height = rect.height
       }
-      updateCanvasSize()
-      window.addEventListener('resize', updateCanvasSize)
-    } catch (error) {
-      console.error('Error initializing MediaPipe Hands:', error)
-      setStatus('Error initializing hand tracking: ' + error.message)
-    }
+        updateCanvasSize()
+        window.addEventListener('resize', updateCanvasSize)
+      } catch (error) {
+        console.error('Error initializing MediaPipe Hands:', error)
+        setStatus('Error initializing hand tracking: ' + error.message)
+      }
     }
     
     // Call the async initialization function
