@@ -45,12 +45,68 @@ const HandTracking = () => {
         console.log('Initializing MediaPipe Hands...')
         console.log('HandsModule:', HandsModule)
         console.log('HandsModule keys:', Object.keys(HandsModule))
+        console.log('HandsModule.default:', HandsModule.default)
+        console.log('HandsModule.default keys:', HandsModule.default ? Object.keys(HandsModule.default) : 'N/A')
         console.log('CameraModule:', CameraModule)
         console.log('CameraModule keys:', Object.keys(CameraModule))
+        console.log('CameraModule.default:', CameraModule.default)
+        console.log('CameraModule.default keys:', CameraModule.default ? Object.keys(CameraModule.default) : 'N/A')
         
-        // Get Hands from module
-        const Hands = HandsModule.Hands || HandsModule.default?.Hands || HandsModule.default
-        const Camera = CameraModule.Camera || CameraModule.default?.Camera || CameraModule.default
+        // Get Hands from module - check inside default export
+        let Hands = null
+        if (HandsModule.Hands) {
+          Hands = HandsModule.Hands
+          console.log('Found Hands via HandsModule.Hands')
+        } else if (HandsModule.default) {
+          // Check if default has Hands property
+          if (HandsModule.default.Hands) {
+            Hands = HandsModule.default.Hands
+            console.log('Found Hands via HandsModule.default.Hands')
+          } else if (typeof HandsModule.default === 'function') {
+            // Default itself might be the constructor
+            Hands = HandsModule.default
+            console.log('Found Hands - default is the constructor')
+          } else {
+            // Check all properties of default
+            console.log('Searching inside HandsModule.default...')
+            for (const key in HandsModule.default) {
+              const value = HandsModule.default[key]
+              console.log(`Checking HandsModule.default.${key}:`, typeof value, value)
+              if (value && typeof value === 'function' && value.prototype) {
+                console.log(`Found potential Hands constructor at default.${key}`)
+                Hands = value
+                break
+              }
+            }
+          }
+        }
+        
+        // Get Camera from module
+        let Camera = null
+        if (CameraModule.Camera) {
+          Camera = CameraModule.Camera
+          console.log('Found Camera via CameraModule.Camera')
+        } else if (CameraModule.default) {
+          if (CameraModule.default.Camera) {
+            Camera = CameraModule.default.Camera
+            console.log('Found Camera via CameraModule.default.Camera')
+          } else if (typeof CameraModule.default === 'function') {
+            Camera = CameraModule.default
+            console.log('Found Camera - default is the constructor')
+          } else {
+            // Check all properties of default
+            console.log('Searching inside CameraModule.default...')
+            for (const key in CameraModule.default) {
+              const value = CameraModule.default[key]
+              console.log(`Checking CameraModule.default.${key}:`, typeof value, value)
+              if (value && typeof value === 'function' && value.prototype) {
+                console.log(`Found potential Camera constructor at default.${key}`)
+                Camera = value
+                break
+              }
+            }
+          }
+        }
         
         console.log('Hands class:', Hands)
         console.log('Hands type:', typeof Hands)
@@ -61,6 +117,7 @@ const HandTracking = () => {
           console.error('HandsModule structure:', {
             keys: Object.keys(HandsModule),
             default: HandsModule.default,
+            defaultKeys: HandsModule.default ? Object.keys(HandsModule.default) : null,
             Hands: HandsModule.Hands
           })
           throw new Error(`Hands is not a constructor. Type: ${typeof Hands}`)
