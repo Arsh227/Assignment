@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import * as HandsModule from '@mediapipe/hands'
-import * as CameraModule from '@mediapipe/camera_utils'
 
 const HandTracking = () => {
   const videoRef = useRef(null)
