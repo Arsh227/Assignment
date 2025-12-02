@@ -395,8 +395,10 @@ const HandTracking = () => {
     
     // Convert normalized coordinates to viewport coordinates
     // MediaPipe gives normalized coordinates (0-1), we need to map to viewport
-    const indexX = rect.left + (indexTip.x * rect.width)
-    const indexY = rect.top + (indexTip.y * rect.height)
+    // Invert X coordinate because camera is mirrored (left-right flip)
+    // Invert Y coordinate because camera is mirrored (up-down flip)
+    const indexX = rect.left + ((1 - indexTip.x) * rect.width)
+    const indexY = rect.top + ((1 - indexTip.y) * rect.height)
     
     // Update virtual cursor position (index finger controls cursor)
     virtualCursorRef.current = { x: indexX, y: indexY }
@@ -414,12 +416,13 @@ const HandTracking = () => {
     // Normalized distance threshold (0-1 scale)
     const clickThreshold = 0.05 // Increased threshold for easier clicking
     
-    if (thumbIndexDistance < clickThreshold && now - lastClickTimeRef.current > 500) {
+    // Reduced cooldown for smoother clicking (200ms instead of 500ms)
+    if (thumbIndexDistance < clickThreshold && now - lastClickTimeRef.current > 200) {
       // Click detected
       performClick(indexX, indexY)
       lastClickTimeRef.current = now
       setGesture('Click!')
-      setTimeout(() => setGesture(''), 500)
+      setTimeout(() => setGesture(''), 300)
     }
 
     // Check for scroll gestures
@@ -444,16 +447,17 @@ const HandTracking = () => {
     const allFingersExtended = fingerExtensions.every(extended => extended === true) && fingerExtensions.length === 4
     const allFingersClosed = fingerClosures.every(closed => closed === true) && fingerClosures.length === 4
 
-    if (allFingersExtended && now - scrollCooldownRef.current > 500) {
+    // Reduced cooldown for smoother scrolling (150ms instead of 500ms)
+    if (allFingersExtended && now - scrollCooldownRef.current > 150) {
       performScroll('up')
       scrollCooldownRef.current = now
       setGesture('Scroll Up ↑')
-      setTimeout(() => setGesture(''), 800)
-    } else if (allFingersClosed && now - scrollCooldownRef.current > 500) {
+      setTimeout(() => setGesture(''), 500)
+    } else if (allFingersClosed && now - scrollCooldownRef.current > 150) {
       performScroll('down')
       scrollCooldownRef.current = now
       setGesture('Scroll Down ↓')
-      setTimeout(() => setGesture(''), 800)
+      setTimeout(() => setGesture(''), 500)
     }
   }
 
@@ -527,21 +531,27 @@ const HandTracking = () => {
       document.body.appendChild(cursor)
     }
     
+    // Smooth cursor movement with requestAnimationFrame for better performance
     cursor.style.left = `${constrainedX}px`
     cursor.style.top = `${constrainedY}px`
+    // Remove transition for instant movement, but keep it smooth via requestAnimationFrame
+    cursor.style.transition = 'none'
 
     // Trigger mouse move events only on safe elements
-    const elementBelow = document.elementFromPoint(constrainedX, constrainedY)
-    if (elementBelow && elementBelow !== cursor && isSafeElement(elementBelow)) {
-      const mouseEvent = new MouseEvent('mousemove', {
-        view: window,
-        bubbles: true,
-        cancelable: true,
-        clientX: constrainedX,
-        clientY: constrainedY,
-      })
-      elementBelow.dispatchEvent(mouseEvent)
-    }
+    // Use requestAnimationFrame for smoother updates
+    requestAnimationFrame(() => {
+      const elementBelow = document.elementFromPoint(constrainedX, constrainedY)
+      if (elementBelow && elementBelow !== cursor && isSafeElement(elementBelow)) {
+        const mouseEvent = new MouseEvent('mousemove', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          clientX: constrainedX,
+          clientY: constrainedY,
+        })
+        elementBelow.dispatchEvent(mouseEvent)
+      }
+    })
   }
 
   const performClick = (x, y) => {
@@ -622,7 +632,8 @@ const HandTracking = () => {
 
   const performScroll = (direction) => {
     // Only scroll within the current page, don't navigate
-    const scrollAmount = direction === 'up' ? -100 : 100
+    // Smaller scroll amount for smoother scrolling (50px instead of 100px)
+    const scrollAmount = direction === 'up' ? -50 : 50
     
     // Get the main scrollable container (usually body or html)
     const scrollContainer = document.documentElement.scrollHeight > window.innerHeight 
