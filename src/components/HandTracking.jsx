@@ -265,29 +265,6 @@ const HandTracking = () => {
       }
       updateCanvasSize()
       window.addEventListener('resize', updateCanvasSize)
-
-      return () => {
-        if (camera) {
-          try {
-            camera.stop()
-          } catch (error) {
-            console.error('Error stopping camera:', error)
-          }
-        }
-        if (hands) {
-          try {
-            hands.close()
-          } catch (error) {
-            console.error('Error closing MediaPipe Hands:', error)
-          }
-        }
-        window.removeEventListener('resize', updateCanvasSize)
-        // Cleanup virtual cursor
-        const cursor = document.getElementById('virtual-hand-cursor')
-        if (cursor) {
-          cursor.remove()
-        }
-      }
     } catch (error) {
       console.error('Error initializing MediaPipe Hands:', error)
       setStatus('Error initializing hand tracking: ' + error.message)
@@ -296,6 +273,28 @@ const HandTracking = () => {
     
     // Call the async initialization function
     initializeMediaPipe()
+    
+    // Return cleanup function
+    return () => {
+      if (cameraRef.current) {
+        try {
+          cameraRef.current.stop()
+        } catch (error) {
+          console.error('Error stopping camera:', error)
+        }
+      }
+      if (handsRef.current) {
+        try {
+          handsRef.current.close()
+        } catch (error) {
+          console.error('Error closing MediaPipe Hands:', error)
+        }
+      }
+      const cursor = document.getElementById('virtual-hand-cursor')
+      if (cursor) {
+        cursor.remove()
+      }
+    }
   }, [isActive])
 
   // Cleanup on unmount
