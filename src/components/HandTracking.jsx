@@ -37,74 +37,28 @@ const HandTracking = () => {
     let hands = null
     let camera = null
     
-    // Initialize MediaPipe Hands - using namespace imports
+    // Initialize MediaPipe Hands - loaded from CDN (available on window object)
     const initializeMediaPipe = () => {
       try {
         console.log('Initializing MediaPipe Hands...')
-        console.log('HandsModule:', HandsModule)
-        console.log('HandsModule keys:', Object.keys(HandsModule))
-        console.log('HandsModule.default:', HandsModule.default)
-        console.log('HandsModule.default keys:', HandsModule.default ? Object.keys(HandsModule.default) : 'N/A')
-        console.log('CameraModule:', CameraModule)
-        console.log('CameraModule keys:', Object.keys(CameraModule))
-        console.log('CameraModule.default:', CameraModule.default)
-        console.log('CameraModule.default keys:', CameraModule.default ? Object.keys(CameraModule.default) : 'N/A')
         
-        // Get Hands from module - check inside default export
-        let Hands = null
-        if (HandsModule.Hands) {
-          Hands = HandsModule.Hands
-          console.log('Found Hands via HandsModule.Hands')
-        } else if (HandsModule.default) {
-          // Check if default has Hands property
-          if (HandsModule.default.Hands) {
-            Hands = HandsModule.default.Hands
-            console.log('Found Hands via HandsModule.default.Hands')
-          } else if (typeof HandsModule.default === 'function') {
-            // Default itself might be the constructor
-            Hands = HandsModule.default
-            console.log('Found Hands - default is the constructor')
-          } else {
-            // Check all properties of default
-            console.log('Searching inside HandsModule.default...')
-            for (const key in HandsModule.default) {
-              const value = HandsModule.default[key]
-              console.log(`Checking HandsModule.default.${key}:`, typeof value, value)
-              if (value && typeof value === 'function' && value.prototype) {
-                console.log(`Found potential Hands constructor at default.${key}`)
-                Hands = value
-                break
-              }
+        // MediaPipe is loaded from CDN and available on window object
+        // Check if MediaPipe is loaded
+        if (typeof window === 'undefined' || !window.Hands || !window.Camera) {
+          // Wait a bit for scripts to load
+          setTimeout(() => {
+            if (window.Hands && window.Camera) {
+              initializeMediaPipe()
+            } else {
+              setStatus('Error: MediaPipe not loaded. Please refresh the page.')
+              console.error('MediaPipe not found on window object. Available:', Object.keys(window).filter(k => k.includes('Hands') || k.includes('Camera')))
             }
-          }
+          }, 100)
+          return
         }
         
-        // Get Camera from module
-        let Camera = null
-        if (CameraModule.Camera) {
-          Camera = CameraModule.Camera
-          console.log('Found Camera via CameraModule.Camera')
-        } else if (CameraModule.default) {
-          if (CameraModule.default.Camera) {
-            Camera = CameraModule.default.Camera
-            console.log('Found Camera via CameraModule.default.Camera')
-          } else if (typeof CameraModule.default === 'function') {
-            Camera = CameraModule.default
-            console.log('Found Camera - default is the constructor')
-          } else {
-            // Check all properties of default
-            console.log('Searching inside CameraModule.default...')
-            for (const key in CameraModule.default) {
-              const value = CameraModule.default[key]
-              console.log(`Checking CameraModule.default.${key}:`, typeof value, value)
-              if (value && typeof value === 'function' && value.prototype) {
-                console.log(`Found potential Camera constructor at default.${key}`)
-                Camera = value
-                break
-              }
-            }
-          }
-        }
+        const Hands = window.Hands
+        const Camera = window.Camera
         
         console.log('Hands class:', Hands)
         console.log('Hands type:', typeof Hands)
@@ -112,21 +66,10 @@ const HandTracking = () => {
         console.log('Camera type:', typeof Camera)
         
         if (!Hands || typeof Hands !== 'function') {
-          console.error('HandsModule structure:', {
-            keys: Object.keys(HandsModule),
-            default: HandsModule.default,
-            defaultKeys: HandsModule.default ? Object.keys(HandsModule.default) : null,
-            Hands: HandsModule.Hands
-          })
           throw new Error(`Hands is not a constructor. Type: ${typeof Hands}`)
         }
         
         if (!Camera || typeof Camera !== 'function') {
-          console.error('CameraModule structure:', {
-            keys: Object.keys(CameraModule),
-            default: CameraModule.default,
-            Camera: CameraModule.Camera
-          })
           throw new Error(`Camera is not a constructor. Type: ${typeof Camera}`)
         }
         
