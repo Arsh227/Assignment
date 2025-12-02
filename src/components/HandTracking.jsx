@@ -41,11 +41,17 @@ const HandTracking = () => {
     
     // Initialize MediaPipe Hands
     try {
+      console.log('Initializing MediaPipe Hands...')
+      
       hands = new Hands({
         locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+          const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+          console.log('Loading MediaPipe file:', file, 'from', url)
+          return url
         },
       })
+
+      console.log('MediaPipe Hands instance created')
 
       hands.setOptions({
         maxNumHands: 1,
@@ -54,11 +60,24 @@ const HandTracking = () => {
         minTrackingConfidence: 0.3, // Lowered for easier tracking
       })
 
+      console.log('MediaPipe Hands options set')
+
+      let frameCount = 0
       hands.onResults((results) => {
         try {
+          frameCount++
+          if (frameCount % 30 === 0) { // Log every 30 frames (about once per second)
+            console.log('MediaPipe processing frame #', frameCount)
+            console.log('Results:', {
+              hasImage: !!results.image,
+              hasLandmarks: !!(results.multiHandLandmarks && results.multiHandLandmarks.length > 0),
+              landmarkCount: results.multiHandLandmarks ? results.multiHandLandmarks.length : 0
+            })
+          }
+          
           // Debug logging
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            console.log('Hand detected! Landmarks:', results.multiHandLandmarks[0].length)
+            console.log('✅ Hand detected! Landmarks:', results.multiHandLandmarks[0].length)
           }
           
           // Clear canvas
@@ -107,16 +126,31 @@ const HandTracking = () => {
         }
       })
 
+      console.log('MediaPipe Hands onResults callback set')
       handsRef.current = hands
 
       // Wait for video to be ready before initializing camera
       const initializeCamera = () => {
+        console.log('Initializing camera, video readyState:', video.readyState)
+        
         if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+          console.log('Video is ready, creating Camera instance...')
+          
+          let frameSendCount = 0
           camera = new Camera(video, {
             onFrame: async () => {
               try {
+                frameSendCount++
+                if (frameSendCount % 30 === 0) { // Log every 30 frames
+                  console.log('Sending frame #', frameSendCount, 'to MediaPipe, video readyState:', video.readyState)
+                }
+                
                 if (hands && video.readyState === video.HAVE_ENOUGH_DATA) {
                   await hands.send({ image: video })
+                } else {
+                  if (frameSendCount % 30 === 0) {
+                    console.warn('Video not ready or hands not initialized. readyState:', video.readyState, 'hands:', !!hands)
+                  }
                 }
               } catch (error) {
                 console.error('Error sending frame to MediaPipe:', error)
@@ -126,22 +160,40 @@ const HandTracking = () => {
             height: 480,
           })
           
+          console.log('Camera instance created, starting...')
+          
           camera.start().then(() => {
-            console.log('Camera started successfully')
+            console.log('✅ Camera started successfully!')
             setStatus('Hand tracking active! Show your hand to the camera.')
           }).catch((error) => {
-            console.error('Error starting camera:', error)
+            console.error('❌ Error starting camera:', error)
             setStatus('Error starting camera: ' + error.message)
           })
           
           cameraRef.current = camera
         } else {
+          console.log('Video not ready yet, waiting for loadeddata event...')
           // Wait for video to load
-          video.addEventListener('loadeddata', initializeCamera, { once: true })
+          video.addEventListener('loadeddata', () => {
+            console.log('Video loadeddata event fired, readyState:', video.readyState)
+            initializeCamera()
+          }, { once: true })
+          
+          // Also try after a short delay in case event doesn't fire
+          setTimeout(() => {
+            if (video.readyState >= 2 && !cameraRef.current) {
+              console.log('Video ready after timeout, initializing camera...')
+              initializeCamera()
+            }
+          }, 1000)
         }
       }
       
-      initializeCamera()
+      // Wait a bit for MediaPipe to initialize before starting camera
+      setTimeout(() => {
+        console.log('Starting camera initialization...')
+        initializeCamera()
+      }, 500)
 
       // Set canvas size
       const updateCanvasSize = () => {
