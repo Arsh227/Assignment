@@ -51,16 +51,26 @@ const HandTracking = () => {
         const CameraClass = cameraModule.Camera
         
         console.log('MediaPipe modules loaded:', { 
-          Hands: !!Hands, 
-          Camera: !!Camera,
-          handsModule,
-          cameraModule
+          Hands: !!Hands,
+          HandsType: typeof Hands,
+          HandsIsFunction: typeof Hands === 'function',
+          Camera: !!CameraClass,
+          CameraType: typeof CameraClass,
+          handsModuleKeys: Object.keys(handsModule),
+          cameraModuleKeys: Object.keys(cameraModule)
         })
         
         if (!Hands) {
+          console.error('Hands not found. Module structure:', handsModule)
           throw new Error('Hands class not found in MediaPipe module')
         }
         
+        if (typeof Hands !== 'function') {
+          console.error('Hands is not a function. Type:', typeof Hands, 'Value:', Hands)
+          throw new Error(`Hands is not a constructor. Type: ${typeof Hands}`)
+        }
+        
+        console.log('Creating Hands instance with type:', typeof Hands)
         hands = new Hands({
           locateFile: (file) => {
             const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
