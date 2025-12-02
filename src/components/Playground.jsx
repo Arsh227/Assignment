@@ -4,12 +4,14 @@ import { HiRefresh, HiPlay, HiStop, HiCode } from 'react-icons/hi'
 import { useMousePosition } from '../hooks/useMousePosition'
 import HandTracking from './HandTracking'
 
-// Particle Playground Component
+// Galaxy Particle System - Unique interactive particle playground
 const ParticlePlayground = () => {
   const canvasRef = useRef(null)
   const { x, y } = useMousePosition()
   const [particles, setParticles] = useState([])
+  const [gravityWells, setGravityWells] = useState([])
   const animationRef = useRef(null)
+  const trailsRef = useRef([])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -20,70 +22,221 @@ const ParticlePlayground = () => {
     canvas.width = rect.width
     canvas.height = rect.height
 
+    // Create galaxy particles with varied properties
     const newParticles = []
-    for (let i = 0; i < 50; i++) {
+    const particleCount = 150
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount
+      const distance = Math.random() * Math.min(canvas.width, canvas.height) * 0.3
+      const speed = Math.random() * 0.5 + 0.2
+      
       newParticles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 2,
-        vy: (Math.random() - 0.5) * 2,
-        radius: Math.random() * 4 + 2,
-        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+        x: canvas.width / 2 + Math.cos(angle) * distance,
+        y: canvas.height / 2 + Math.sin(angle) * distance,
+        vx: Math.cos(angle + Math.PI / 2) * speed,
+        vy: Math.sin(angle + Math.PI / 2) * speed,
+        radius: Math.random() * 3 + 1,
+        baseHue: Math.random() * 60 + 200, // Blue-purple range
+        trail: [],
+        mass: Math.random() * 0.5 + 0.5,
+        life: 1,
       })
     }
     setParticles(newParticles)
 
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    // Initialize gravity wells (black holes)
+    const initialWells = [
+      { x: canvas.width * 0.3, y: canvas.height * 0.3, strength: 0.3, radius: 50 },
+      { x: canvas.width * 0.7, y: canvas.height * 0.7, strength: 0.3, radius: 50 },
+    ]
+    setGravityWells(initialWells)
 
+    // Handle canvas clicks to create gravity wells
+    const handleClick = (e) => {
+      const rect = canvas.getBoundingClientRect()
+      const clickX = e.clientX - rect.left
+      const clickY = e.clientY - rect.top
+      
+      // Create explosion effect
+      for (let i = 0; i < 20; i++) {
+        const angle = (Math.PI * 2 * i) / 20
+        const speed = Math.random() * 5 + 2
+        newParticles.push({
+          x: clickX,
+          y: clickY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: Math.random() * 4 + 2,
+          baseHue: Math.random() * 360,
+          trail: [],
+          mass: Math.random() * 0.5 + 0.5,
+          life: 1,
+        })
+      }
+      
+      // Add gravity well
+      setGravityWells(prev => [...prev, {
+        x: clickX,
+        y: clickY,
+        strength: 0.5,
+        radius: 60,
+        life: 1,
+      }])
+    }
+
+    canvas.addEventListener('click', handleClick)
+
+    const animate = () => {
+      // Create dark space background with subtle stars
+      ctx.fillStyle = 'rgba(5, 5, 15, 0.1)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw starfield background
+      for (let i = 0; i < 50; i++) {
+        const starX = (i * 137.508) % canvas.width
+        const starY = (i * 197.508) % canvas.height
+        const brightness = Math.sin(Date.now() * 0.001 + i) * 0.5 + 0.5
+        ctx.fillStyle = `rgba(255, 255, 255, ${brightness * 0.3})`
+        ctx.fillRect(starX, starY, 1, 1)
+      }
+
+      // Update and draw gravity wells (black holes)
+      gravityWells.forEach((well, wellIndex) => {
+        if (well.life !== undefined) {
+          well.life -= 0.01
+          if (well.life <= 0) {
+            setGravityWells(prev => prev.filter((_, i) => i !== wellIndex))
+            return
+          }
+        }
+
+        // Draw gravity well glow
+        const gradient = ctx.createRadialGradient(well.x, well.y, 0, well.x, well.y, well.radius)
+        gradient.addColorStop(0, `rgba(99, 102, 241, ${well.strength * 0.8})`)
+        gradient.addColorStop(0.5, `rgba(139, 92, 246, ${well.strength * 0.4})`)
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+        
+        ctx.fillStyle = gradient
+        ctx.beginPath()
+        ctx.arc(well.x, well.y, well.radius, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Draw black hole center
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
+        ctx.beginPath()
+        ctx.arc(well.x, well.y, well.radius * 0.3, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
+      // Update and draw particles
       newParticles.forEach((particle, i) => {
-        // Mouse interaction
-        const dx = x - rect.left - particle.x
-        const dy = y - rect.top - particle.y
+        // Store previous position for trail
+        particle.trail.push({ x: particle.x, y: particle.y })
+        if (particle.trail.length > 8) {
+          particle.trail.shift()
+        }
+
+        // Apply gravity from all gravity wells
+        gravityWells.forEach(well => {
+          const dx = well.x - particle.x
+          const dy = well.y - particle.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          const minDistance = well.radius * 0.5
+
+          if (distance > minDistance) {
+            const force = (well.strength * particle.mass) / (distance * distance + 100)
+            particle.vx += (dx / distance) * force * 0.1
+            particle.vy += (dy / distance) * force * 0.1
+          } else {
+            // Particle gets absorbed
+            particle.life -= 0.05
+          }
+        })
+
+        // Mouse interaction (repulsion)
+        const mouseX = x - rect.left
+        const mouseY = y - rect.top
+        const dx = mouseX - particle.x
+        const dy = mouseY - particle.y
         const distance = Math.sqrt(dx * dx + dy * dy)
 
-        if (distance < 100) {
-          const force = (100 - distance) / 100
-          particle.vx -= (dx / distance) * force * 0.1
-          particle.vy -= (dy / distance) * force * 0.1
+        if (distance < 150 && distance > 0) {
+          const force = (150 - distance) / 150
+          particle.vx -= (dx / distance) * force * 0.15
+          particle.vy -= (dy / distance) * force * 0.15
         }
 
         // Update position
         particle.x += particle.vx
         particle.y += particle.vy
 
-        // Bounce off walls
-        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -0.8
-        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -0.8
+        // Wrap around edges
+        if (particle.x < 0) particle.x = canvas.width
+        if (particle.x > canvas.width) particle.x = 0
+        if (particle.y < 0) particle.y = canvas.height
+        if (particle.y > canvas.height) particle.y = 0
 
-        // Keep in bounds
-        particle.x = Math.max(0, Math.min(canvas.width, particle.x))
-        particle.y = Math.max(0, Math.min(canvas.height, particle.y))
+        // Damping
+        particle.vx *= 0.995
+        particle.vy *= 0.995
 
-        // Friction
-        particle.vx *= 0.98
-        particle.vy *= 0.98
+        // Calculate velocity-based color
+        const velocity = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy)
+        const hue = (particle.baseHue + velocity * 50) % 360
+        const saturation = Math.min(100, 70 + velocity * 10)
+        const lightness = Math.min(90, 50 + velocity * 20)
 
-        // Draw particle
-        ctx.beginPath()
-        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2)
-        ctx.fillStyle = particle.color
-        ctx.fill()
-
-        // Connect nearby particles
-        newParticles.slice(i + 1).forEach(other => {
-          const dx = particle.x - other.x
-          const dy = particle.y - other.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 80) {
+        // Draw trail
+        particle.trail.forEach((point, trailIndex) => {
+          const alpha = (trailIndex / particle.trail.length) * particle.life * 0.3
+          ctx.strokeStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`
+          ctx.lineWidth = particle.radius * 0.5
+          if (trailIndex > 0) {
             ctx.beginPath()
-            ctx.moveTo(particle.x, particle.y)
-            ctx.lineTo(other.x, other.y)
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 * (1 - dist / 80)})`
-            ctx.lineWidth = 1
+            ctx.moveTo(particle.trail[trailIndex - 1].x, particle.trail[trailIndex - 1].y)
+            ctx.lineTo(point.x, point.y)
             ctx.stroke()
           }
         })
+
+        // Draw particle with glow
+        const particleGradient = ctx.createRadialGradient(
+          particle.x, particle.y, 0,
+          particle.x, particle.y, particle.radius * 2
+        )
+        particleGradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${lightness}%, ${particle.life})`)
+        particleGradient.addColorStop(0.5, `hsla(${hue}, ${saturation}%, ${lightness}%, ${particle.life * 0.5})`)
+        particleGradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${lightness}%, 0)`)
+
+        ctx.fillStyle = particleGradient
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.radius * 2, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Draw particle core
+        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${particle.life})`
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Remove dead particles
+        if (particle.life <= 0) {
+          newParticles.splice(i, 1)
+          // Add new particle to maintain count
+          const angle = Math.random() * Math.PI * 2
+          const distance = Math.random() * Math.min(canvas.width, canvas.height) * 0.3
+          newParticles.push({
+            x: canvas.width / 2 + Math.cos(angle) * distance,
+            y: canvas.height / 2 + Math.sin(angle) * distance,
+            vx: Math.cos(angle + Math.PI / 2) * (Math.random() * 0.5 + 0.2),
+            vy: Math.sin(angle + Math.PI / 2) * (Math.random() * 0.5 + 0.2),
+            radius: Math.random() * 3 + 1,
+            baseHue: Math.random() * 60 + 200,
+            trail: [],
+            mass: Math.random() * 0.5 + 0.5,
+            life: 1,
+          })
+        }
       })
 
       animationRef.current = requestAnimationFrame(animate)
@@ -92,6 +245,7 @@ const ParticlePlayground = () => {
     animate()
 
     return () => {
+      canvas.removeEventListener('click', handleClick)
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
@@ -105,13 +259,15 @@ const ParticlePlayground = () => {
         className="playground-canvas"
         style={{
           width: '100%',
-          height: '400px',
+          height: '500px',
           borderRadius: '12px',
-          background: 'rgba(0, 0, 0, 0.3)',
+          background: 'radial-gradient(circle at center, rgba(15, 15, 35, 0.8), rgba(5, 5, 15, 0.95))',
           cursor: 'crosshair',
         }}
       />
-      <p className="playground-instructions">Move your mouse to interact with particles!</p>
+      <p className="playground-instructions">
+        🌌 Galaxy Particle System - Move mouse to repel particles, click to create gravity wells and explosions!
+      </p>
     </div>
   )
 }
