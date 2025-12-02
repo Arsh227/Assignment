@@ -28,6 +28,12 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   scroll-behavior: smooth;
+  min-height: 100vh;
+}
+
+body #root {
+  min-height: 100vh;
+  position: relative;
 }
 
 html {

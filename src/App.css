@@ -3,6 +3,14 @@
   overflow-x: hidden;
   position: relative;
   will-change: scroll-position;
+  z-index: 1;
+  background: transparent;
+}
+
+/* Ensure content is always visible */
+.app > * {
+  position: relative;
+  z-index: 10;
 }
 
 /* Interactive Background */
@@ -128,6 +136,7 @@ section {
   will-change: transform;
   backface-visibility: hidden;
   transform: translateZ(0);
+  background: transparent;
 }
 
 /* Ensure all content appears above interactive background */
