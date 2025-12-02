@@ -23,41 +23,7 @@ const Contact = ({ scrollProgress }) => {
     // Handle form submission here
     console.log('Form submitted:', formData)
     
-    // Create celebration effect
-    const button = e.target.querySelector('button[type="submit"]')
-    if (button) {
-      // Create confetti effect
-      for (let i = 0; i < 30; i++) {
-        setTimeout(() => {
-          const confetti = document.createElement('div')
-          confetti.style.position = 'fixed'
-          const rect = button.getBoundingClientRect()
-          confetti.style.left = `${rect.left + rect.width / 2}px`
-          confetti.style.top = `${rect.top + rect.height / 2}px`
-          confetti.style.width = '6px'
-          confetti.style.height = '6px'
-          confetti.style.backgroundColor = ['#6366f1', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 3)]
-          confetti.style.borderRadius = '50%'
-          confetti.style.pointerEvents = 'none'
-          confetti.style.zIndex = '9999'
-          
-          document.body.appendChild(confetti)
-          
-          const angle = (Math.PI * 2 * i) / 30
-          const velocity = 3 + Math.random() * 3
-          const vx = Math.cos(angle) * velocity
-          const vy = Math.sin(angle) * velocity
-          
-          confetti.animate([
-            { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-            { transform: `translate(${vx * 50}px, ${vy * 50}px) scale(0)`, opacity: 0 }
-          ], {
-            duration: 800,
-            easing: 'ease-out'
-          }).onfinish = () => confetti.remove()
-        }, i * 20)
-      }
-    }
+    // Confetti effect removed to eliminate purple dots
     
     setTimeout(() => {
       alert('Thank you for your message! I\'ll get back to you soon.')

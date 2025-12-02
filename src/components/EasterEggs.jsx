@@ -55,33 +55,7 @@ const EasterEggs = () => {
       const now = Date.now()
       if (now - lastClickTime < 300) {
         // Create sparkles
-        for (let i = 0; i < 15; i++) {
-          const sparkle = document.createElement('div')
-          sparkle.style.position = 'fixed'
-          sparkle.style.left = `${e.clientX}px`
-          sparkle.style.top = `${e.clientY}px`
-          sparkle.style.width = '4px'
-          sparkle.style.height = '4px'
-          sparkle.style.backgroundColor = '#6366f1'
-          sparkle.style.borderRadius = '50%'
-          sparkle.style.pointerEvents = 'none'
-          sparkle.style.zIndex = '9999'
-          
-          document.body.appendChild(sparkle)
-
-          const angle = (Math.PI * 2 * i) / 15
-          const distance = 50 + Math.random() * 50
-          const targetX = e.clientX + Math.cos(angle) * distance
-          const targetY = e.clientY + Math.sin(angle) * distance
-
-          sparkle.animate([
-            { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-            { transform: `translate(${targetX - e.clientX}px, ${targetY - e.clientY}px) scale(0)`, opacity: 0 }
-          ], {
-            duration: 600,
-            easing: 'ease-out'
-          }).onfinish = () => sparkle.remove()
-        }
+        // Sparkles disabled to remove purple dots
       }
       lastClickTime = now
     }

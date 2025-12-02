@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Navigation from './components/Navigation'
 import Hero from './components/Hero'
-import StatsStrip from './components/StatsStrip'
 import Projects from './components/Projects'
 import About from './components/About'
 import Skills from './components/Skills'
@@ -11,10 +10,9 @@ import Testimonials from './components/Testimonials'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
 import BackToTop from './components/BackToTop'
-import Background3D from './components/Background3D'
 import ClickEffects from './components/ClickEffects'
 import EasterEggs from './components/EasterEggs'
-import CursorTrail from './components/CursorTrail'
+import InteractiveBackground from './components/InteractiveBackground'
 
 import { useScroll3D } from './hooks/useScroll3D'
 import { useMousePosition } from './hooks/useMousePosition'
@@ -31,6 +29,32 @@ function App() {
   }, [])
 
   useEffect(() => {
+    // Clean up any leftover purple dots from previous renders
+    const cleanupPurpleDots = () => {
+      const allDivs = document.querySelectorAll('div')
+      allDivs.forEach(div => {
+        const style = div.getAttribute('style') || ''
+        const bgColor = window.getComputedStyle(div).backgroundColor
+        const borderRadius = window.getComputedStyle(div).borderRadius
+        const width = window.getComputedStyle(div).width
+        const height = window.getComputedStyle(div).height
+        
+        // Remove small circular purple elements
+        if (
+          (bgColor.includes('rgb(99, 102, 241)') || bgColor.includes('rgb(139, 92, 246)')) &&
+          (borderRadius === '50%' || borderRadius.includes('50%')) &&
+          (parseInt(width) < 50 && parseInt(height) < 50) &&
+          div.style.position === 'fixed'
+        ) {
+          div.remove()
+        }
+      })
+    }
+    
+    // Run cleanup immediately and on interval
+    cleanupPurpleDots()
+    const cleanupInterval = setInterval(cleanupPurpleDots, 1000)
+    
     let rafId = null
     const throttledHandleScroll = () => {
       if (rafId) return
@@ -42,6 +66,7 @@ function App() {
     
     window.addEventListener('scroll', throttledHandleScroll, { passive: true })
     return () => {
+      clearInterval(cleanupInterval)
       window.removeEventListener('scroll', throttledHandleScroll)
       if (rafId) cancelAnimationFrame(rafId)
     }
@@ -93,15 +118,14 @@ function App() {
         '--mouse-y': `${mouseY}px`,
       }}
     >
-      <Background3D />
+      <InteractiveBackground />
       <ClickEffects />
       <EasterEggs />
-      <CursorTrail />
       <Navigation />
       <motion.div 
         variants={sectionVariants}
         style={{
-          transform: `translateY(${scrollY * 0.02}px)`,
+          transform: `translateY(${scrollY * 0.05}px)`,
         }}
       >
         <Hero scrollProgress={scrollProgress} scrollY={scrollY} />
@@ -109,15 +133,7 @@ function App() {
       <motion.div 
         variants={sectionVariants}
         style={{
-          transform: `translateY(${scrollY * -0.01}px)`,
-        }}
-      >
-        <StatsStrip scrollProgress={scrollProgress} />
-      </motion.div>
-      <motion.div 
-        variants={sectionVariants}
-        style={{
-          transform: `translateY(${scrollY * 0.015}px)`,
+          transform: `translateY(${scrollY * 0.04}px)`,
         }}
       >
         <Projects scrollProgress={scrollProgress} />
@@ -125,7 +141,7 @@ function App() {
       <motion.div 
         variants={sectionVariants}
         style={{
-          transform: `translateY(${scrollY * -0.01}px)`,
+          transform: `translateY(${scrollY * -0.035}px)`,
           willChange: 'transform',
         }}
       >
@@ -134,7 +150,7 @@ function App() {
       <motion.div 
         variants={sectionVariants}
         style={{
-          transform: `translateY(${scrollY * 0.015}px)`,
+          transform: `translateY(${scrollY * 0.045}px)`,
         }}
       >
         <Skills scrollProgress={scrollProgress} />
@@ -142,7 +158,7 @@ function App() {
       <motion.div 
         variants={sectionVariants}
         style={{
-          transform: `translateY(${scrollY * -0.015}px)`,
+          transform: `translateY(${scrollY * -0.04}px)`,
         }}
       >
         <Playground scrollProgress={scrollProgress} />
@@ -150,7 +166,7 @@ function App() {
       <motion.div 
         variants={sectionVariants}
         style={{
-          transform: `translateY(${scrollY * 0.01}px)`,
+          transform: `translateY(${scrollY * 0.035}px)`,
         }}
       >
         <Testimonials scrollProgress={scrollProgress} />
@@ -158,12 +174,17 @@ function App() {
       <motion.div 
         variants={sectionVariants}
         style={{
-          transform: `translateY(${scrollY * -0.015}px)`,
+          transform: `translateY(${scrollY * -0.03}px)`,
         }}
       >
         <Contact scrollProgress={scrollProgress} />
       </motion.div>
-      <motion.div variants={sectionVariants}>
+      <motion.div 
+        variants={sectionVariants}
+        style={{
+          transform: `translateY(${scrollY * 0.02}px)`,
+        }}
+      >
         <Footer />
       </motion.div>
       {showBackToTop && <BackToTop />}

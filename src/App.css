@@ -5,6 +5,39 @@
   will-change: scroll-position;
 }
 
+/* Interactive Background */
+.interactive-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.interactive-background canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Hide any small circular purple elements that might appear as background dots */
+div[style*="6366f1"][style*="border-radius: 50%"],
+div[style*="8b5cf6"][style*="border-radius: 50%"],
+div[style*="rgba(99, 102, 241"][style*="border-radius: 50%"],
+div[style*="rgba(139, 92, 246"][style*="border-radius: 50%"] {
+  display: none !important;
+}
+
+/* Hide cursor trail dots if they exist */
+.cursor-trail-container,
+.cursor-trail-main,
+.cursor-trail-dot {
+  display: none !important;
+}
+
 /* Interactive Elements */
 .interactive-link {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
@@ -87,229 +120,59 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Background 3D Objects Container */
-.background-3d-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-/* Background 3D Objects */
-.bg-3d-object {
-  position: absolute;
-  transform-style: preserve-3d;
-  will-change: transform;
-  pointer-events: none;
-  backface-visibility: hidden;
-}
-
-/* Background Cubes */
-.bg-cube-1 {
-  width: 120px;
-  height: 120px;
-  top: 10%;
-  left: 5%;
-}
-
-.bg-cube-2 {
-  width: 100px;
-  height: 100px;
-  top: 60%;
-  right: 8%;
-}
-
-.bg-cube-face {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 2px solid rgba(99, 102, 241, 0.3);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
-  backface-visibility: hidden;
-}
-
-.bg-cube-face.bg-front {
-  transform: rotateY(0deg) translateZ(60px);
-}
-
-.bg-cube-face.bg-back {
-  transform: rotateY(180deg) translateZ(60px);
-}
-
-.bg-cube-face.bg-right {
-  transform: rotateY(90deg) translateZ(60px);
-}
-
-.bg-cube-face.bg-left {
-  transform: rotateY(-90deg) translateZ(60px);
-}
-
-.bg-cube-face.bg-top {
-  transform: rotateX(90deg) translateZ(60px);
-}
-
-.bg-cube-face.bg-bottom {
-  transform: rotateX(-90deg) translateZ(60px);
-}
-
-/* Background Spheres */
-.bg-sphere-1 {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  top: 30%;
-  right: 12%;
-  background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.15));
-  border: 3px solid rgba(99, 102, 241, 0.3);
-  box-shadow: 
-    inset -20px -20px 40px rgba(99, 102, 241, 0.2),
-    inset 20px 20px 40px rgba(139, 92, 246, 0.15),
-    0 0 60px rgba(99, 102, 241, 0.3);
-}
-
-.bg-sphere-2 {
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  bottom: 20%;
-  left: 10%;
-  background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.25), rgba(236, 72, 153, 0.15));
-  border: 3px solid rgba(139, 92, 246, 0.3);
-  box-shadow: 
-    inset -20px -20px 40px rgba(139, 92, 246, 0.2),
-    inset 20px 20px 40px rgba(236, 72, 153, 0.15),
-    0 0 60px rgba(139, 92, 246, 0.3);
-}
-
-/* Background Octahedron */
-.bg-octahedron {
-  width: 140px;
-  height: 140px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.bg-octa-face {
-  position: absolute;
-  width: 140px;
-  height: 140px;
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.15));
-  border: 2px solid rgba(236, 72, 153, 0.3);
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  backface-visibility: hidden;
-}
-
-.bg-octa-top {
-  transform: rotateX(90deg) translateZ(70px);
-}
-
-.bg-octa-bottom {
-  transform: rotateX(-90deg) translateZ(70px);
-}
-
-.bg-octa-front {
-  transform: rotateY(0deg) translateZ(70px);
-}
-
-.bg-octa-back {
-  transform: rotateY(180deg) translateZ(70px);
-}
-
-.bg-octa-left {
-  transform: rotateY(-90deg) translateZ(70px);
-}
-
-.bg-octa-right {
-  transform: rotateY(90deg) translateZ(70px);
-}
-
-.bg-octa-front-right {
-  transform: rotateY(45deg) rotateX(45deg) translateZ(70px);
-}
-
-.bg-octa-back-left {
-  transform: rotateY(-135deg) rotateX(45deg) translateZ(70px);
-}
-
-/* Background Pyramid */
-.bg-pyramid {
-  width: 0;
-  height: 0;
-  top: 70%;
-  right: 20%;
-  border-left: 60px solid transparent;
-  border-right: 60px solid transparent;
-  border-bottom: 100px solid rgba(99, 102, 241, 0.2);
-  filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.3));
-  border-width: 0 60px 100px 60px;
-}
-
-/* Background Tetrahedron */
-.bg-tetrahedron {
-  width: 0;
-  height: 0;
-  top: 25%;
-  left: 70%;
-  border-left: 55px solid transparent;
-  border-right: 55px solid transparent;
-  border-bottom: 90px solid rgba(139, 92, 246, 0.2);
-  filter: drop-shadow(0 0 25px rgba(139, 92, 246, 0.3));
-  border-width: 0 55px 90px 55px;
-}
-
-/* Bold Large Geometric Figure */
-.bg-bold-figure {
-  width: 160px;
-  height: 160px;
-  bottom: 15%;
-  left: 8%;
-}
-
-.bg-bold-face {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 3px solid rgba(236, 72, 153, 0.4);
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(139, 92, 246, 0.2));
-  backface-visibility: hidden;
-}
-
-.bg-bold-front {
-  transform: rotateY(0deg) translateZ(80px);
-}
-
-.bg-bold-back {
-  transform: rotateY(180deg) translateZ(80px);
-}
-
-.bg-bold-right {
-  transform: rotateY(90deg) translateZ(80px);
-}
-
-.bg-bold-left {
-  transform: rotateY(-90deg) translateZ(80px);
-}
-
-.bg-bold-top {
-  transform: rotateX(90deg) translateZ(80px);
-}
-
-.bg-bold-bottom {
-  transform: rotateX(-90deg) translateZ(80px);
-}
 
 /* Performance optimizations for sections */
 section {
   position: relative;
-  z-index: 1;
+  z-index: 10;
   will-change: transform;
   backface-visibility: hidden;
   transform: translateZ(0);
+}
+
+/* Ensure all content appears above interactive background */
+.container {
+  position: relative;
+  z-index: 10;
+}
+
+.nav {
+  z-index: 1000; /* Already set, keeping it high for fixed nav */
+}
+
+.hero,
+.projects,
+.about,
+.skills,
+.playground,
+.testimonials,
+.contact,
+footer {
+  position: relative;
+  z-index: 10;
+}
+
+/* Ensure all widgets and cards are visible */
+.project-card,
+.playground-card,
+.skill-category,
+.skill-item,
+.testimonial-card,
+.contact-form,
+.stats-strip,
+.stat-item {
+  position: relative;
+  z-index: 10;
+}
+
+/* Ensure buttons and interactive elements are visible */
+.btn,
+.nav-menu a,
+.contact-link,
+.projects-nav-btn,
+.testimonials-nav-btn {
+  position: relative;
+  z-index: 10;
 }
 
 /* Enhanced scroll-based animations */
@@ -394,11 +257,7 @@ section {
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(
-    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(99, 102, 241, 0.15) 0%,
-    transparent 50%
-  );
+  background: transparent;
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -407,7 +266,7 @@ section {
 }
 
 .project-card:hover::before {
-  opacity: 1;
+  opacity: 0;
 }
 
 .project-card > * {
@@ -563,7 +422,7 @@ section {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(99, 102, 241, 0.2);
+  background: transparent;
   transform: translate(-50%, -50%);
   transition: width 0.4s, height 0.4s;
   z-index: -1;
@@ -599,7 +458,7 @@ section {
   position: relative;
   overflow: hidden;
   padding-top: 80px;
-  z-index: 5;
+  z-index: 10;
   will-change: transform;
   backface-visibility: hidden;
 }
@@ -817,7 +676,7 @@ section {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.3), transparent);
+  background: transparent;
   transform: translate(-50%, -50%);
   transition: width 0.4s, height 0.4s;
   pointer-events: none;
@@ -855,16 +714,46 @@ section {
 /* Projects */
 .projects {
   padding: 120px 0;
-  background: var(--bg-primary);
+  background: rgba(10, 10, 10, 0.3);
+  backdrop-filter: blur(0px);
   position: relative;
   overflow: hidden;
-  z-index: 5;
+  z-index: 10;
+}
+
+.projects-carousel-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.projects-carousel {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 500px;
 }
 
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 32px;
+  width: 100%;
+  align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .projects-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .project-card {
@@ -876,6 +765,9 @@ section {
   cursor: pointer;
   transform-style: preserve-3d;
   backface-visibility: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .project-card:hover {
@@ -941,6 +833,9 @@ section {
 
 .project-content {
   padding: 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .project-title {
@@ -954,6 +849,7 @@ section {
   color: var(--text-secondary);
   margin-bottom: 16px;
   line-height: 1.6;
+  flex: 1;
 }
 
 .project-tech {
@@ -1013,13 +909,83 @@ section {
   color: var(--accent-tertiary);
 }
 
+/* Projects Carousel Navigation */
+.projects-nav-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+}
+
+.projects-nav-btn:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+}
+
+.projects-nav-btn:active {
+  transform: scale(0.95);
+}
+
+.projects-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Projects Pagination */
+.projects-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.projects-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+  position: relative;
+}
+
+.projects-dot:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.2);
+}
+
+.projects-dot.active {
+  background: rgba(255, 255, 255, 0.4);
+  width: 32px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
 /* About */
 .about {
   padding: 120px 0;
-  background: var(--bg-secondary);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(0px);
   position: relative;
   overflow: hidden;
-  z-index: 5;
+  z-index: 10;
 }
 
 .about-content {
@@ -1191,10 +1157,11 @@ section {
 /* Skills */
 .skills {
   padding: 120px 0;
-  background: var(--bg-primary);
+  background: rgba(10, 10, 10, 0.3);
+  backdrop-filter: blur(0px);
   position: relative;
   overflow: hidden;
-  z-index: 5;
+  z-index: 10;
 }
 
 .skills-grid {
@@ -1217,31 +1184,6 @@ section {
   position: relative;
   overflow: hidden;
   transition: all 0.3s ease;
-}
-
-.skill-category::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-    circle,
-    rgba(99, 102, 241, 0.05),
-    transparent 70%
-  );
-  animation: rotate 20s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes rotate {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 .skill-category:hover {
@@ -1369,7 +1311,7 @@ section {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.3), transparent);
+  background: transparent;
   transform: translate(-50%, -50%);
   transition: width 0.3s ease, height 0.3s ease;
   pointer-events: none;
@@ -1395,10 +1337,11 @@ section {
 /* Playground */
 .playground {
   padding: 120px 0;
-  background: var(--bg-secondary);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(0px);
   position: relative;
   overflow: hidden;
-  z-index: 5;
+  z-index: 10;
 }
 
 .playground-content {
@@ -1491,15 +1434,233 @@ section {
   height: 300px;
 }
 
+/* Playground Game Styles */
+.playground-game-area {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.playground-game-container {
+  width: 100%;
+}
+
+.playground-canvas {
+  display: block;
+  border-radius: 12px;
+  cursor: crosshair;
+}
+
+.playground-instructions {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+/* Drawing Canvas Controls */
+.drawing-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.color-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.color-btn:hover {
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.color-btn.active {
+  border-color: white;
+  border-width: 3px;
+  transform: scale(1.15);
+}
+
+.brush-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brush-controls label {
+  color: var(--text-primary);
+  font-size: 14px;
+  min-width: 100px;
+}
+
+.brush-controls input[type="range"] {
+  width: 150px;
+  accent-color: var(--accent-primary);
+}
+
+/* Game Stats */
+.game-stats {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.stat-value {
+  color: var(--accent-primary);
+  font-size: 32px;
+  font-weight: 700;
+}
+
+/* Game Start Screen */
+.game-start-screen {
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.game-start-screen h3 {
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  font-size: 24px;
+}
+
+.game-start-screen p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+/* Game Area */
+.game-area {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.game-target {
+  position: absolute;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+}
+
+/* Color Mixer */
+.color-mixer-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.color-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.color-slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.color-slider label {
+  color: var(--text-primary);
+  font-size: 14px;
+  min-width: 80px;
+}
+
+.color-slider input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent-primary);
+}
+
+.color-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.saved-colors {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.saved-colors h4 {
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+.color-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.saved-color-item {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.saved-color-item:hover {
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 
 
 /* Testimonials */
 .testimonials {
   padding: 120px 0;
-  background: var(--bg-primary);
+  background: rgba(10, 10, 10, 0.3);
+  backdrop-filter: blur(0px);
   position: relative;
   overflow: hidden;
-  z-index: 5;
+  z-index: 10;
 }
 
 .testimonials-carousel {
@@ -1605,13 +1766,13 @@ section {
   height: 12px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .testimonial-dot.active {
-  background: var(--accent-primary);
+  background: rgba(255, 255, 255, 0.4);
   width: 32px;
   border-radius: 6px;
 }
@@ -1619,10 +1780,11 @@ section {
 /* Contact */
 .contact {
   padding: 120px 0;
-  background: var(--bg-secondary);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(0px);
   position: relative;
   overflow: hidden;
-  z-index: 5;
+  z-index: 10;
 }
 
 .contact-content {
@@ -1847,6 +2009,15 @@ section {
 
   .projects-grid {
     grid-template-columns: 1fr;
+  }
+
+  .projects-carousel-wrapper {
+    gap: 12px;
+  }
+
+  .projects-nav-btn {
+    width: 48px;
+    height: 48px;
   }
 }
 

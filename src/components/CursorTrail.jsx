@@ -1,49 +1,105 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
+import { motion, useMotionValue, useSpring } from 'framer-motion'
 import { useMousePosition } from '../hooks/useMousePosition'
 
 const CursorTrail = () => {
   const { x, y } = useMousePosition()
-  const trailRef = useRef([])
+  const [isVisible, setIsVisible] = useState(false)
+  
+  // Smooth spring animation for cursor trail
+  const cursorX = useSpring(useMotionValue(x), { stiffness: 150, damping: 20 })
+  const cursorY = useSpring(useMotionValue(y), { stiffness: 150, damping: 20 })
 
   useEffect(() => {
-    if (x === null || y === null) return
-
-    // Create trail dot
-    const dot = document.createElement('div')
-    dot.style.position = 'fixed'
-    dot.style.left = `${x}px`
-    dot.style.top = `${y}px`
-    dot.style.width = '10px'
-    dot.style.height = '10px'
-    dot.style.borderRadius = '50%'
-    dot.style.background = 'radial-gradient(circle, rgba(99, 102, 241, 0.9), rgba(139, 92, 246, 0.4))'
-    dot.style.boxShadow = '0 0 10px rgba(99, 102, 241, 0.5)'
-    dot.style.pointerEvents = 'none'
-    dot.style.zIndex = '9998'
-    dot.style.transform = 'translate(-50%, -50%)'
-    dot.style.transition = 'opacity 0.3s ease-out'
+    cursorX.set(x)
+    cursorY.set(y)
     
-    document.body.appendChild(dot)
-    trailRef.current.push(dot)
-
-    // Remove old dots
-    if (trailRef.current.length > 15) {
-      const oldDot = trailRef.current.shift()
-      oldDot.style.opacity = '0'
-      setTimeout(() => oldDot.remove(), 300)
+    // Show trail when mouse moves
+    if (!isVisible) {
+      setIsVisible(true)
     }
+  }, [x, y, cursorX, cursorY, isVisible])
 
-    // Fade out dots
-    trailRef.current.forEach((d, index) => {
-      const opacity = 1 - (index / trailRef.current.length) * 0.8
-      d.style.opacity = opacity.toString()
-      const scale = 1 - (index / trailRef.current.length) * 0.5
-      d.style.transform = `translate(-50%, -50%) scale(${scale})`
-    })
-  }, [x, y])
+  // Hide cursor when mouse leaves window
+  useEffect(() => {
+    const handleMouseLeave = () => setIsVisible(false)
+    const handleMouseEnter = () => setIsVisible(true)
+    
+    document.addEventListener('mouseleave', handleMouseLeave)
+    document.addEventListener('mouseenter', handleMouseEnter)
+    
+    return () => {
+      document.removeEventListener('mouseleave', handleMouseLeave)
+      document.removeEventListener('mouseenter', handleMouseEnter)
+    }
+  }, [])
 
-  return null
+  // Trail dots configuration
+  const trailCount = 12
+  const trailDots = Array.from({ length: trailCount }, (_, i) => i)
+
+  if (!isVisible) return null
+
+  return (
+    <div className="cursor-trail-container">
+      {/* Main cursor dot */}
+      <motion.div
+        className="cursor-trail-main"
+        style={{
+          x: cursorX,
+          y: cursorY,
+        }}
+      />
+
+      {/* Trail dots */}
+      {trailDots.map((index) => {
+        const delay = index * 0.02
+        const size = 8 - index * 0.4
+        const opacity = 0.8 - index * 0.06
+        
+        return (
+          <motion.div
+            key={index}
+            className="cursor-trail-dot"
+            style={{
+              x: cursorX,
+              y: cursorY,
+              width: `${size}px`,
+              height: `${size}px`,
+            }}
+            animate={{
+              scale: [1, 0.8, 1],
+              opacity: [opacity * 0.5, opacity, opacity * 0.5],
+            }}
+            transition={{
+              x: {
+                delay: delay,
+                type: "spring",
+                stiffness: 200 - index * 10,
+                damping: 20 - index * 1,
+              },
+              y: {
+                delay: delay,
+                type: "spring",
+                stiffness: 200 - index * 10,
+                damping: 20 - index * 1,
+              },
+              scale: {
+                duration: 1.5 + index * 0.1,
+                repeat: Infinity,
+                ease: "easeInOut",
+              },
+              opacity: {
+                duration: 1.5 + index * 0.1,
+                repeat: Infinity,
+                ease: "easeInOut",
+              },
+            }}
+          />
+        )
+      })}
+    </div>
+  )
 }
 
 export default CursorTrail
-

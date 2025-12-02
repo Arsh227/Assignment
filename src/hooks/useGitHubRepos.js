@@ -41,22 +41,32 @@ export const useGitHubRepos = (username) => {
           })
         )
         
-        // Filter out forks and sort by stars/updated date
-        const filteredRepos = reposWithLanguages
-          .filter(repo => !repo.fork && !repo.archived)
-          .sort((a, b) => {
-            // Sort by stars first, then by updated date
-            if (b.stargazers_count !== a.stargazers_count) {
-              return b.stargazers_count - a.stargazers_count
-            }
-            return new Date(b.updated_at) - new Date(a.updated_at)
-          })
-          .slice(0, 6) // Limit to 6 repos
+        // Filter out forks and archived repos, but if all are filtered, show some anyway
+        let filteredRepos = reposWithLanguages.filter(repo => !repo.fork && !repo.archived)
         
-        setRepos(filteredRepos)
+        // If all repos are filtered out, include forks but not archived
+        if (filteredRepos.length === 0) {
+          filteredRepos = reposWithLanguages.filter(repo => !repo.archived)
+        }
+        
+        // Sort by stars first, then by updated date
+        const sortedRepos = filteredRepos.sort((a, b) => {
+          if (b.stargazers_count !== a.stargazers_count) {
+            return b.stargazers_count - a.stargazers_count
+          }
+          return new Date(b.updated_at) - new Date(a.updated_at)
+        })
+        
+        // Limit to 10 repos (more than before)
+        const limitedRepos = sortedRepos.slice(0, 10)
+        
+        console.log('Filtered repos:', limitedRepos.length, limitedRepos.map(r => r.name))
+        setRepos(limitedRepos)
       } catch (err) {
         console.error('Error fetching GitHub repos:', err)
-        setError(err.message)
+        // Don't show error to user, just use empty array
+        setError(null)
+        setRepos([])
       } finally {
         setLoading(false)
       }

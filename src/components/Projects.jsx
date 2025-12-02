@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { HiExternalLink, HiCode } from 'react-icons/hi'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { HiExternalLink, HiCode, HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { useMousePosition } from '../hooks/useMousePosition'
 import { useGitHubRepos } from '../hooks/useGitHubRepos'
 
@@ -141,6 +141,32 @@ const ProjectCard = ({ project, index, scrollProgress }) => {
 const Projects = ({ scrollProgress }) => {
   const { x, y } = useMousePosition()
   const { repos, loading, error } = useGitHubRepos('Arsh227')
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [projectsPerView, setProjectsPerView] = useState(3)
+
+  // Debug logging
+  useEffect(() => {
+    console.log('GitHub Repos:', repos)
+    console.log('Loading:', loading)
+    console.log('Error:', error)
+  }, [repos, loading, error])
+
+  // Calculate projects per view based on screen size
+  useEffect(() => {
+    const updateProjectsPerView = () => {
+      if (window.innerWidth >= 1200) {
+        setProjectsPerView(3)
+      } else if (window.innerWidth >= 768) {
+        setProjectsPerView(2)
+      } else {
+        setProjectsPerView(1)
+      }
+    }
+
+    updateProjectsPerView()
+    window.addEventListener('resize', updateProjectsPerView)
+    return () => window.removeEventListener('resize', updateProjectsPerView)
+  }, [])
 
   // Featured projects (custom projects that appear first)
   const featuredProjects = [
@@ -158,7 +184,7 @@ const Projects = ({ scrollProgress }) => {
   ]
 
   // Map GitHub repos to project format
-  const githubProjects = repos.map((repo, index) => {
+  const githubProjects = repos.length > 0 ? repos.map((repo, index) => {
     // Get tech stack from languages (limit to 4)
     const tech = repo.languages?.slice(0, 4) || []
     
@@ -196,23 +222,47 @@ const Projects = ({ scrollProgress }) => {
       stars: repo.stargazers_count,
       updated: repo.updated_at,
     }
-  })
+  }) : []
 
   // Combine featured projects with GitHub projects
   const allProjects = [...featuredProjects, ...githubProjects]
 
-  // Fallback projects if no repos loaded yet or error
-  const fallbackProjects = [
-    ...featuredProjects,
-    {
-      id: 1,
-      title: 'Loading Projects...',
-      description: 'Fetching repositories from GitHub...',
-      tech: ['Loading'],
-      tags: ['GitHub'],
-      image: '/images/projects/project-1.jpg',
-    },
-  ]
+  // Use allProjects if we have repos, otherwise show featured + loading message
+  const projectsToShow = loading 
+    ? [
+        ...featuredProjects,
+        {
+          id: 'loading',
+          title: 'Loading Projects...',
+          description: 'Fetching repositories from GitHub...',
+          tech: ['Loading'],
+          tags: ['GitHub'],
+          image: '/images/projects/project-1.jpg',
+        },
+      ]
+    : allProjects.length > featuredProjects.length 
+      ? allProjects 
+      : featuredProjects
+  const totalSlides = Math.ceil(projectsToShow.length / projectsPerView)
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % totalSlides)
+  }
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides)
+  }
+
+  const goToSlide = (index) => {
+    setCurrentSlide(index)
+  }
+
+  // Get projects for current slide
+  const getCurrentProjects = () => {
+    const start = currentSlide * projectsPerView
+    const end = start + projectsPerView
+    return projectsToShow.slice(start, end)
+  }
 
   return (
     <section id="work" className="projects">
@@ -239,26 +289,71 @@ const Projects = ({ scrollProgress }) => {
           </motion.div>
         )}
 
-        {error && (
-          <motion.div
-            className="projects-error"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <p>Unable to load projects from GitHub. Showing placeholder projects.</p>
-          </motion.div>
+        {/* Show debug info in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ color: 'white', marginBottom: '20px', fontSize: '12px' }}>
+            Repos: {repos.length} | Loading: {loading.toString()} | Projects: {projectsToShow.length}
+          </div>
         )}
 
-        <div className="projects-grid">
-          {(allProjects.length > 0 ? allProjects : fallbackProjects).map((project, index) => (
-            <ProjectCard 
-              key={project.id || index}
-              project={project}
-              index={index}
-              scrollProgress={scrollProgress}
-            />
-          ))}
-        </div>
+        {!loading && (
+          <div className="projects-carousel-wrapper">
+            {totalSlides > 1 && (
+              <button 
+                className="projects-nav-btn projects-nav-prev"
+                onClick={prevSlide}
+                aria-label="Previous projects"
+              >
+                <HiChevronLeft size={24} />
+              </button>
+            )}
+
+            <div className="projects-carousel">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSlide}
+                  className="projects-grid"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                >
+                  {getCurrentProjects().map((project, index) => (
+                    <ProjectCard 
+                      key={project.id || index}
+                      project={project}
+                      index={index}
+                      scrollProgress={scrollProgress}
+                    />
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {totalSlides > 1 && (
+              <button 
+                className="projects-nav-btn projects-nav-next"
+                onClick={nextSlide}
+                aria-label="Next projects"
+              >
+                <HiChevronRight size={24} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {totalSlides > 1 && (
+          <div className="projects-pagination">
+            {Array.from({ length: totalSlides }).map((_, index) => (
+              <button
+                key={index}
+                className={`projects-dot ${currentSlide === index ? 'active' : ''}`}
+                onClick={() => goToSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )

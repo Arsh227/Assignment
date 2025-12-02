@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { HiArrowDown, HiDownload } from 'react-icons/hi'
+import { HiArrowDown, HiMail } from 'react-icons/hi'
 
 const Hero = ({ scrollProgress, scrollY }) => {
   const [currentRole, setCurrentRole] = useState(0)
@@ -183,6 +183,7 @@ const Hero = ({ scrollProgress, scrollY }) => {
               }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => {
+                scrollToSection('#contact')
                 const ripple = document.createElement('span')
                 ripple.className = 'ripple'
                 const rect = e.currentTarget.getBoundingClientRect()
@@ -194,8 +195,8 @@ const Hero = ({ scrollProgress, scrollY }) => {
                 setTimeout(() => ripple.remove(), 600)
               }}
             >
-              Download Resume
-              <HiDownload className="btn-icon" />
+              Let's Connect
+              <HiMail className="btn-icon" />
             </motion.button>
           </motion.div>
         </motion.div>

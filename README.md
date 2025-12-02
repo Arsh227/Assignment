@@ -43,7 +43,7 @@ npm run preview
 
 ### Update Your Information
 
-1. **Name**: Replace `[YOUR NAME]` throughout the components
+1. **Name**: Replace `Arsh` throughout the components
 2. **Contact Info**: Update email and social links in `Contact.jsx` and `Footer.jsx`
 3. **Projects**: Edit the projects array in `Projects.jsx`
 4. **About**: Update the about section content in `About.jsx`
