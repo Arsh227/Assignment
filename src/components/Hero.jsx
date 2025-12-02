@@ -222,8 +222,6 @@ const Hero = ({ scrollProgress, scrollY }) => {
                 initial={{ opacity: 0, y: 100, rotate: -45 }}
                 animate={{ 
                   opacity: 1, 
-                  y: 0, 
-                  rotate: 0,
                   y: [0, -10, 0],
                   rotate: [0, 2, 0],
                 }}

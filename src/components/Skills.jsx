@@ -216,12 +216,6 @@ const Skills = ({ scrollProgress }) => {
                         initial={{ opacity: 0, scale: 0.8, y: 20 }}
                         whileInView={{ opacity: 1, scale: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ 
-                          delay: (catIndex * 0.1) + (skillIndex * 0.05),
-                          type: "spring",
-                          stiffness: 200,
-                          damping: 15
-                        }}
                         whileHover={{ 
                           scale: 1.15, 
                           rotate: [0, -5, 5, -5, 0],
@@ -248,7 +242,12 @@ const Skills = ({ scrollProgress }) => {
                           duration: 1,
                           repeat: 1,
                           ease: "easeInOut"
-                        } : {}}
+                        } : {
+                          delay: (catIndex * 0.1) + (skillIndex * 0.05),
+                          type: "spring",
+                          stiffness: 200,
+                          damping: 15
+                        }}
                       >
                         {SkillIcon && (
                           <motion.div 
