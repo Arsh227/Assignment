@@ -281,12 +281,6 @@ const Skills = ({ scrollProgress }) => {
                               initial={{ width: 0 }}
                               whileInView={{ width: `${skill.level}%` }}
                               viewport={{ once: true }}
-                              transition={{ 
-                                delay: (catIndex * 0.1) + (skillIndex * 0.05) + 0.2, 
-                                duration: 1,
-                                type: "spring",
-                                stiffness: 100
-                              }}
                               animate={{
                                 boxShadow: [
                                   `0 0 0px ${skill.color || 'rgba(99, 102, 241, 0)'}`,
@@ -294,7 +288,11 @@ const Skills = ({ scrollProgress }) => {
                                   `0 0 0px ${skill.color || 'rgba(99, 102, 241, 0)'}`
                                 ]
                               }}
-                              transition={{
+                              transition={{ 
+                                delay: (catIndex * 0.1) + (skillIndex * 0.05) + 0.2, 
+                                duration: 1,
+                                type: "spring",
+                                stiffness: 100,
                                 boxShadow: {
                                   duration: 2,
                                   repeat: Infinity,
