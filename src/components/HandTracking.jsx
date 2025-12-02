@@ -46,56 +46,73 @@ const HandTracking = () => {
         const handsModule = await import('@mediapipe/hands')
         const cameraModule = await import('@mediapipe/camera_utils')
         
-        // Log full module structure
+        // Log full module structure to understand what Vite is giving us
         console.log('Raw handsModule:', handsModule)
         console.log('handsModule keys:', Object.keys(handsModule))
         console.log('handsModule.default:', handsModule.default)
         console.log('handsModule.Hands:', handsModule.Hands)
         console.log('typeof handsModule:', typeof handsModule)
         
-        console.log('Raw cameraModule:', cameraModule)
-        console.log('cameraModule keys:', Object.keys(cameraModule))
-        
-        // Try to get Hands - check all possible locations
+        // Try to access Hands - Vite might be wrapping it differently
         let Hands = null
         
-        // Method 1: Direct export
-        if (handsModule.Hands) {
-          Hands = handsModule.Hands
-          console.log('Found Hands via handsModule.Hands')
-        }
-        // Method 2: Default export with Hands property
-        else if (handsModule.default) {
-          if (handsModule.default.Hands) {
-            Hands = handsModule.default.Hands
-            console.log('Found Hands via handsModule.default.Hands')
-          } else if (typeof handsModule.default === 'function') {
-            Hands = handsModule.default
-            console.log('Found Hands via handsModule.default (function)')
+        // Check all possible ways Hands could be exported
+        const possiblePaths = [
+          () => handsModule.Hands,
+          () => handsModule.default?.Hands,
+          () => handsModule.default,
+          () => handsModule['Hands'],
+          () => Object.values(handsModule).find(v => v && typeof v === 'function' && v.prototype),
+        ]
+        
+        for (let i = 0; i < possiblePaths.length; i++) {
+          try {
+            const candidate = possiblePaths[i]()
+            if (candidate && typeof candidate === 'function') {
+              // Check if it looks like a constructor
+              if (candidate.prototype && candidate.prototype.constructor) {
+                Hands = candidate
+                console.log(`Found Hands via method ${i + 1}`)
+                break
+              }
+            }
+          } catch (e) {
+            // Continue trying
           }
         }
-        // Method 3: Check if module itself is the constructor
-        else if (typeof handsModule === 'function') {
-          Hands = handsModule
-          console.log('Found Hands via handsModule (function)')
+        
+        // If still not found, try accessing via Symbol or check all properties
+        if (!Hands) {
+          console.log('Trying to find Hands in all module properties...')
+          for (const key in handsModule) {
+            const value = handsModule[key]
+            console.log(`Checking ${key}:`, typeof value, value)
+            if (value && typeof value === 'function' && value.prototype) {
+              // Might be the constructor
+              console.log(`Found potential Hands at key: ${key}`)
+              Hands = value
+              break
+            }
+          }
         }
         
         // Try to get Camera
         let CameraClass = null
         if (cameraModule.Camera) {
           CameraClass = cameraModule.Camera
-          console.log('Found Camera via cameraModule.Camera')
-        } else if (cameraModule.default) {
-          if (cameraModule.default.Camera) {
-            CameraClass = cameraModule.default.Camera
-            console.log('Found Camera via cameraModule.default.Camera')
-          } else if (typeof cameraModule.default === 'function') {
-            CameraClass = cameraModule.default
-            console.log('Found Camera via cameraModule.default (function)')
+        } else if (cameraModule.default?.Camera) {
+          CameraClass = cameraModule.default.Camera
+        } else if (cameraModule.default && typeof cameraModule.default === 'function') {
+          CameraClass = cameraModule.default
+        } else {
+          // Try finding it in all properties
+          for (const key in cameraModule) {
+            const value = cameraModule[key]
+            if (value && typeof value === 'function' && value.prototype) {
+              CameraClass = value
+              break
+            }
           }
-        } else if (typeof cameraModule === 'function') {
-          CameraClass = cameraModule
-          console.log('Found Camera via cameraModule (function)')
         }
         
         console.log('MediaPipe modules loaded:', { 
@@ -113,7 +130,8 @@ const HandTracking = () => {
             keys: Object.keys(handsModule),
             default: handsModule.default,
             hasHands: 'Hands' in handsModule,
-            moduleType: typeof handsModule
+            moduleType: typeof handsModule,
+            allValues: Object.values(handsModule).map(v => typeof v)
           })
           throw new Error('Hands class not found in MediaPipe module')
         }
