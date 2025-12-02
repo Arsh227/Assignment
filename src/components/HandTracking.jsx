@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Hands } from '@mediapipe/hands'
-import { Camera } from '@mediapipe/camera_utils'
 
 const HandTracking = () => {
   const videoRef = useRef(null)
@@ -39,19 +37,38 @@ const HandTracking = () => {
     let hands = null
     let camera = null
     
-    // Initialize MediaPipe Hands
-    try {
-      console.log('Initializing MediaPipe Hands...')
-      
-      hands = new Hands({
-        locateFile: (file) => {
-          const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-          console.log('Loading MediaPipe file:', file, 'from', url)
-          return url
-        },
-      })
+    // Initialize MediaPipe Hands - use async function
+    const initializeMediaPipe = async () => {
+      try {
+        console.log('Initializing MediaPipe Hands...')
+        
+        // Dynamically import MediaPipe Hands
+        const handsModule = await import('@mediapipe/hands')
+        const cameraModule = await import('@mediapipe/camera_utils')
+        
+        const Hands = handsModule.Hands || handsModule.default?.Hands || handsModule.default
+        const Camera = cameraModule.Camera || cameraModule.default?.Camera || cameraModule.default
+        
+        console.log('MediaPipe modules loaded:', { 
+          Hands: !!Hands, 
+          Camera: !!Camera,
+          handsModule,
+          cameraModule
+        })
+        
+        if (!Hands) {
+          throw new Error('Hands class not found in MediaPipe module')
+        }
+        
+        hands = new Hands({
+          locateFile: (file) => {
+            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            console.log('Loading MediaPipe file:', file, 'from', url)
+            return url
+          },
+        })
 
-      console.log('MediaPipe Hands instance created')
+        console.log('MediaPipe Hands instance created')
 
       hands.setOptions({
         maxNumHands: 1,
@@ -130,14 +147,21 @@ const HandTracking = () => {
       handsRef.current = hands
 
       // Wait for video to be ready before initializing camera
-      const initializeCamera = () => {
+      const initializeCamera = async () => {
         console.log('Initializing camera, video readyState:', video.readyState)
+        
+        // Import Camera if not already imported
+        let CameraClass = Camera
+        if (!CameraClass) {
+          const cameraModule = await import('@mediapipe/camera_utils')
+          CameraClass = cameraModule.Camera
+        }
         
         if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
           console.log('Video is ready, creating Camera instance...')
           
           let frameSendCount = 0
-          camera = new Camera(video, {
+          camera = new CameraClass(video, {
             onFrame: async () => {
               try {
                 frameSendCount++
@@ -194,7 +218,7 @@ const HandTracking = () => {
         console.log('Starting camera initialization...')
         initializeCamera()
       }, 500)
-
+      
       // Set canvas size
       const updateCanvasSize = () => {
         const rect = canvas.getBoundingClientRect()
@@ -212,6 +236,13 @@ const HandTracking = () => {
             console.error('Error stopping camera:', error)
           }
         }
+        if (hands) {
+          try {
+            hands.close()
+          } catch (error) {
+            console.error('Error closing MediaPipe Hands:', error)
+          }
+        }
         window.removeEventListener('resize', updateCanvasSize)
         // Cleanup virtual cursor
         const cursor = document.getElementById('virtual-hand-cursor')
@@ -223,6 +254,10 @@ const HandTracking = () => {
       console.error('Error initializing MediaPipe Hands:', error)
       setStatus('Error initializing hand tracking: ' + error.message)
     }
+    }
+    
+    // Call the async initialization function
+    initializeMediaPipe()
   }, [isActive])
 
   // Cleanup on unmount
