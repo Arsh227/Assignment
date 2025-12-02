@@ -53,47 +53,47 @@ const HandTracking = () => {
         console.log('handsModule.Hands:', handsModule.Hands)
         console.log('typeof handsModule:', typeof handsModule)
         
-        // Try to access Hands - Vite might be wrapping it differently
+        // The module only has a default export, so Hands must be inside default
         let Hands = null
         
-        // Check all possible ways Hands could be exported
-        const possiblePaths = [
-          () => handsModule.Hands,
-          () => handsModule.default?.Hands,
-          () => handsModule.default,
-          () => handsModule['Hands'],
-          () => Object.values(handsModule).find(v => v && typeof v === 'function' && v.prototype),
-        ]
-        
-        for (let i = 0; i < possiblePaths.length; i++) {
-          try {
-            const candidate = possiblePaths[i]()
-            if (candidate && typeof candidate === 'function') {
-              // Check if it looks like a constructor
-              if (candidate.prototype && candidate.prototype.constructor) {
-                Hands = candidate
-                console.log(`Found Hands via method ${i + 1}`)
-                break
+        if (handsModule.default) {
+          const defaultExport = handsModule.default
+          console.log('defaultExport keys:', Object.keys(defaultExport))
+          console.log('defaultExport.Hands:', defaultExport.Hands)
+          console.log('typeof defaultExport:', typeof defaultExport)
+          
+          // Check if Hands is directly on default
+          if (defaultExport.Hands) {
+            Hands = defaultExport.Hands
+            console.log('Found Hands via defaultExport.Hands')
+          } 
+          // Check if default itself is the Hands constructor
+          else if (typeof defaultExport === 'function' && defaultExport.prototype) {
+            Hands = defaultExport
+            console.log('Found Hands - defaultExport is the constructor')
+          }
+          // Check all properties of defaultExport
+          else {
+            console.log('Searching through defaultExport properties...')
+            for (const key in defaultExport) {
+              const value = defaultExport[key]
+              console.log(`Checking defaultExport.${key}:`, typeof value, value)
+              if (value && typeof value === 'function' && value.prototype) {
+                // Check if it looks like a constructor (has prototype.constructor)
+                if (value.prototype.constructor === value) {
+                  console.log(`Found potential Hands constructor at defaultExport.${key}`)
+                  Hands = value
+                  break
+                }
               }
             }
-          } catch (e) {
-            // Continue trying
           }
         }
         
-        // If still not found, try accessing via Symbol or check all properties
-        if (!Hands) {
-          console.log('Trying to find Hands in all module properties...')
-          for (const key in handsModule) {
-            const value = handsModule[key]
-            console.log(`Checking ${key}:`, typeof value, value)
-            if (value && typeof value === 'function' && value.prototype) {
-              // Might be the constructor
-              console.log(`Found potential Hands at key: ${key}`)
-              Hands = value
-              break
-            }
-          }
+        // Fallback: check direct module properties
+        if (!Hands && handsModule.Hands) {
+          Hands = handsModule.Hands
+          console.log('Found Hands via handsModule.Hands')
         }
         
         // Try to get Camera
