@@ -25,77 +25,118 @@ const HandTracking = () => {
 
     const video = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas) return
+    if (!video || !canvas) {
+      console.error('Video or canvas ref not available')
+      return
+    }
 
     const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      console.error('Could not get canvas context')
+      return
+    }
+    
+    let hands = null
+    let camera = null
     
     // Initialize MediaPipe Hands
-    const hands = new Hands({
-      locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      },
-    })
+    try {
+      hands = new Hands({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        },
+      })
 
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    })
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      })
 
-    hands.onResults((results) => {
-      // Clear canvas
-      ctx.save()
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
+      hands.onResults((results) => {
+        try {
+          // Clear canvas
+          ctx.save()
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          
+          // Draw video frame
+          if (results.image) {
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
+          }
 
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        const landmarks = results.multiHandLandmarks[0]
-        handLandmarksRef.current = landmarks
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const landmarks = results.multiHandLandmarks[0]
+            handLandmarksRef.current = landmarks
 
-        // Draw hand landmarks
-        drawHandLandmarks(ctx, landmarks, canvas.width, canvas.height)
-        
-        // Process gestures
-        processGestures(landmarks, canvas.width, canvas.height)
-      } else {
-        handLandmarksRef.current = null
-        setGesture('')
+            // Draw hand landmarks
+            drawHandLandmarks(ctx, landmarks, canvas.width, canvas.height)
+            
+            // Process gestures
+            processGestures(landmarks, canvas.width, canvas.height)
+          } else {
+            handLandmarksRef.current = null
+            setGesture('')
+          }
+
+          ctx.restore()
+        } catch (error) {
+          console.error('Error in hands.onResults:', error)
+        }
+      })
+
+      handsRef.current = hands
+
+      // Initialize camera
+      camera = new Camera(video, {
+        onFrame: async () => {
+          try {
+            if (hands && video.readyState === video.HAVE_ENOUGH_DATA) {
+              await hands.send({ image: video })
+            }
+          } catch (error) {
+            console.error('Error sending frame to MediaPipe:', error)
+          }
+        },
+        width: 640,
+        height: 480,
+      })
+      
+      camera.start().catch((error) => {
+        console.error('Error starting camera:', error)
+        setStatus('Error starting camera: ' + error.message)
+      })
+      
+      cameraRef.current = camera
+      setStatus('Hand tracking active! Show your hand to the camera.')
+
+      // Set canvas size
+      const updateCanvasSize = () => {
+        const rect = canvas.getBoundingClientRect()
+        canvas.width = rect.width
+        canvas.height = rect.height
       }
+      updateCanvasSize()
+      window.addEventListener('resize', updateCanvasSize)
 
-      ctx.restore()
-    })
-
-    handsRef.current = hands
-
-    // Initialize camera
-    const camera = new Camera(video, {
-      onFrame: async () => {
-        await hands.send({ image: video })
-      },
-      width: 640,
-      height: 480,
-    })
-    camera.start()
-    cameraRef.current = camera
-
-    // Set canvas size
-    const updateCanvasSize = () => {
-      const rect = canvas.getBoundingClientRect()
-      canvas.width = rect.width
-      canvas.height = rect.height
-    }
-    updateCanvasSize()
-    window.addEventListener('resize', updateCanvasSize)
-
-    return () => {
-      camera.stop()
-      window.removeEventListener('resize', updateCanvasSize)
-      // Cleanup virtual cursor
-      const cursor = document.getElementById('virtual-hand-cursor')
-      if (cursor) {
-        cursor.remove()
+      return () => {
+        if (camera) {
+          try {
+            camera.stop()
+          } catch (error) {
+            console.error('Error stopping camera:', error)
+          }
+        }
+        window.removeEventListener('resize', updateCanvasSize)
+        // Cleanup virtual cursor
+        const cursor = document.getElementById('virtual-hand-cursor')
+        if (cursor) {
+          cursor.remove()
+        }
       }
+    } catch (error) {
+      console.error('Error initializing MediaPipe Hands:', error)
+      setStatus('Error initializing hand tracking: ' + error.message)
     }
   }, [isActive])
 
@@ -199,12 +240,16 @@ const HandTracking = () => {
     moveVirtualCursor(indexX, indexY)
 
     // Check for click gesture (index finger touches thumb)
+    // Use normalized coordinates for distance calculation
     const thumbIndexDistance = Math.sqrt(
-      Math.pow((thumbTip.x - indexTip.x) * rect.width, 2) +
-      Math.pow((thumbTip.y - indexTip.y) * rect.height, 2)
+      Math.pow(thumbTip.x - indexTip.x, 2) +
+      Math.pow(thumbTip.y - indexTip.y, 2)
     )
     
-    if (thumbIndexDistance < 30 && now - lastClickTimeRef.current > 500) {
+    // Normalized distance threshold (0-1 scale)
+    const clickThreshold = 0.05 // Increased threshold for easier clicking
+    
+    if (thumbIndexDistance < clickThreshold && now - lastClickTimeRef.current > 500) {
       // Click detected
       performClick(indexX, indexY)
       lastClickTimeRef.current = now
@@ -213,24 +258,26 @@ const HandTracking = () => {
     }
 
     // Check for scroll gestures
-    // All 4 fingers extended up (scroll up) - tip significantly above PIP
+    // All 4 fingers extended up (scroll up) - tip above PIP
+    const fingerExtensionThreshold = 0.03 // Increased threshold for easier detection
     const fingerExtensions = [
-      indexTip.y < indexPip.y - 0.02, // Index extended
-      middleTip.y < middlePip.y - 0.02, // Middle extended
-      ringTip.y < ringPip.y - 0.02, // Ring extended
-      pinkyTip.y < pinkyPip.y - 0.02, // Pinky extended
+      indexTip.y < indexPip.y - fingerExtensionThreshold, // Index extended
+      middleTip.y < middlePip.y - fingerExtensionThreshold, // Middle extended
+      ringTip.y < ringPip.y - fingerExtensionThreshold, // Ring extended
+      pinkyTip.y < pinkyPip.y - fingerExtensionThreshold, // Pinky extended
     ]
     
     // All 4 fingers closed down (scroll down) - tip below PIP
+    const fingerClosureThreshold = 0.03
     const fingerClosures = [
-      indexTip.y > indexPip.y + 0.02,
-      middleTip.y > middlePip.y + 0.02,
-      ringTip.y > ringPip.y + 0.02,
-      pinkyTip.y > pinkyPip.y + 0.02,
+      indexTip.y > indexPip.y + fingerClosureThreshold,
+      middleTip.y > middlePip.y + fingerClosureThreshold,
+      ringTip.y > ringPip.y + fingerClosureThreshold,
+      pinkyTip.y > pinkyPip.y + fingerClosureThreshold,
     ]
     
-    const allFingersExtended = fingerExtensions.every(extended => extended) && fingerExtensions.length === 4
-    const allFingersClosed = fingerClosures.every(closed => closed) && fingerClosures.length === 4
+    const allFingersExtended = fingerExtensions.every(extended => extended === true) && fingerExtensions.length === 4
+    const allFingersClosed = fingerClosures.every(closed => closed === true) && fingerClosures.length === 4
 
     if (allFingersExtended && now - scrollCooldownRef.current > 500) {
       performScroll('up')
@@ -544,8 +591,23 @@ const HandTracking = () => {
 
   const stopTracking = () => {
     if (cameraRef.current) {
-      cameraRef.current.stop()
+      try {
+        cameraRef.current.stop()
+      } catch (error) {
+        console.error('Error stopping camera:', error)
+      }
+      cameraRef.current = null
     }
+    
+    if (handsRef.current) {
+      try {
+        handsRef.current.close()
+      } catch (error) {
+        console.error('Error closing MediaPipe Hands:', error)
+      }
+      handsRef.current = null
+    }
+    
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop())
       videoRef.current.srcObject = null
