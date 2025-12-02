@@ -793,6 +793,8 @@ const HandTracking = () => {
             width: '100%',
             height: '100%',
             transform: 'scaleX(-1)', // Mirror to match video
+            zIndex: 10, // Ensure canvas is on top of video
+            pointerEvents: 'none', // Don't block interactions
           }}
         />
         {!isActive && (
