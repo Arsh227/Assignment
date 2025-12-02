@@ -15,6 +15,9 @@ const HandTracking = () => {
   const virtualCursorRef = useRef({ x: 0, y: 0 })
   const lastClickTimeRef = useRef(0)
   const scrollCooldownRef = useRef(0)
+  const cursorPositionRef = useRef({ x: 0, y: 0 })
+  const targetCursorPositionRef = useRef({ x: 0, y: 0 })
+  const animationFrameRef = useRef(null)
 
   // No global click interceptor - we'll handle navigation prevention in performClick only
 
@@ -511,6 +514,9 @@ const HandTracking = () => {
     const constrainedX = Math.max(0, Math.min(x, window.innerWidth))
     const constrainedY = Math.max(0, Math.min(y, window.innerHeight))
     
+    // Set target position for smooth interpolation
+    targetCursorPositionRef.current = { x: constrainedX, y: constrainedY }
+    
     // Create or update virtual cursor element
     let cursor = document.getElementById('virtual-hand-cursor')
     if (!cursor) {
@@ -526,43 +532,86 @@ const HandTracking = () => {
         pointer-events: none;
         z-index: 99999;
         transform: translate(-50%, -50%);
-        transition: transform 0.1s ease-out;
+        transition: none;
       `
       document.body.appendChild(cursor)
     }
     
-    // Smooth cursor movement with requestAnimationFrame for better performance
-    cursor.style.left = `${constrainedX}px`
-    cursor.style.top = `${constrainedY}px`
-    // Remove transition for instant movement, but keep it smooth via requestAnimationFrame
-    cursor.style.transition = 'none'
-
-    // Trigger mouse move events only on safe elements
-    // Use requestAnimationFrame for smoother updates
-    requestAnimationFrame(() => {
-      const elementBelow = document.elementFromPoint(constrainedX, constrainedY)
-      if (elementBelow && elementBelow !== cursor && isSafeElement(elementBelow)) {
-        const mouseEvent = new MouseEvent('mousemove', {
-          view: window,
-          bubbles: true,
-          cancelable: true,
-          clientX: constrainedX,
-          clientY: constrainedY,
-        })
-        elementBelow.dispatchEvent(mouseEvent)
+    // Start smooth animation loop if not already running
+    if (!animationFrameRef.current) {
+      const animateCursor = () => {
+        const current = cursorPositionRef.current
+        const target = targetCursorPositionRef.current
+        
+        // Smooth interpolation (easing factor for smooth movement)
+        const easing = 0.15
+        const dx = target.x - current.x
+        const dy = target.y - current.y
+        
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+          current.x += dx * easing
+          current.y += dy * easing
+          
+          cursor.style.left = `${current.x}px`
+          cursor.style.top = `${current.y}px`
+          
+          // Dispatch mouse move events to all elements along the path
+          const elementBelow = document.elementFromPoint(current.x, current.y)
+          if (elementBelow && elementBelow !== cursor && isSafeElement(elementBelow)) {
+            // Dispatch to the element
+            const mouseMoveEvent = new MouseEvent('mousemove', {
+              view: window,
+              bubbles: true,
+              cancelable: true,
+              clientX: current.x,
+              clientY: current.y,
+            })
+            elementBelow.dispatchEvent(mouseMoveEvent)
+            
+            // Also dispatch mouseover/mouseenter events for better hover support
+            const mouseOverEvent = new MouseEvent('mouseover', {
+              view: window,
+              bubbles: true,
+              cancelable: true,
+              clientX: current.x,
+              clientY: current.y,
+            })
+            elementBelow.dispatchEvent(mouseOverEvent)
+          }
+          
+          animationFrameRef.current = requestAnimationFrame(animateCursor)
+        } else {
+          // Reached target, stop animation
+          current.x = target.x
+          current.y = target.y
+          cursor.style.left = `${current.x}px`
+          cursor.style.top = `${current.y}px`
+          animationFrameRef.current = null
+        }
       }
-    })
+      animationFrameRef.current = requestAnimationFrame(animateCursor)
+    }
   }
 
   const performClick = (x, y) => {
+    // Use current cursor position for more accurate clicking
+    const currentPos = cursorPositionRef.current
+    const clickX = currentPos.x || x
+    const clickY = currentPos.y || y
+    
     // Constrain click to viewport
-    const constrainedX = Math.max(0, Math.min(x, window.innerWidth))
-    const constrainedY = Math.max(0, Math.min(y, window.innerHeight))
+    const constrainedX = Math.max(0, Math.min(clickX, window.innerWidth))
+    const constrainedY = Math.max(0, Math.min(clickY, window.innerHeight))
+    
+    console.log('Performing click at:', constrainedX, constrainedY)
     
     const elementBelow = document.elementFromPoint(constrainedX, constrainedY)
+    console.log('Element below cursor:', elementBelow)
     
     // Only click on safe elements
     if (elementBelow && isSafeElement(elementBelow)) {
+      console.log('Element is safe, dispatching click events')
+      
       // Check if it's a link
       const isLink = elementBelow.tagName === 'A' || elementBelow.closest('a')
       let link = null
@@ -595,38 +644,39 @@ const HandTracking = () => {
         }
       }
       
-      // Create click event (synthetic, not trusted)
-      const clickEvent = new MouseEvent('click', {
+      // Create and dispatch mouse events in proper order for full compatibility
+      const mouseEventOptions = {
         view: window,
         bubbles: true,
         cancelable: true,
         clientX: constrainedX,
         clientY: constrainedY,
-      })
+        screenX: constrainedX,
+        screenY: constrainedY,
+        button: 0,
+        buttons: 1,
+      }
       
-      // Dispatch the click event
-      elementBelow.dispatchEvent(clickEvent)
-      
-      // Also dispatch mousedown and mouseup for better compatibility
-      const mouseDownEvent = new MouseEvent('mousedown', {
-        view: window,
-        bubbles: true,
-        cancelable: true,
-        clientX: constrainedX,
-        clientY: constrainedY,
-      })
-      const mouseUpEvent = new MouseEvent('mouseup', {
-        view: window,
-        bubbles: true,
-        cancelable: true,
-        clientX: constrainedX,
-        clientY: constrainedY,
-      })
-      
+      // 1. Mouse down
+      const mouseDownEvent = new MouseEvent('mousedown', mouseEventOptions)
       elementBelow.dispatchEvent(mouseDownEvent)
+      
+      // 2. Mouse up (after short delay for realistic click)
       setTimeout(() => {
+        const mouseUpEvent = new MouseEvent('mouseup', mouseEventOptions)
         elementBelow.dispatchEvent(mouseUpEvent)
-      }, 50)
+        
+        // 3. Click event
+        const clickEvent = new MouseEvent('click', mouseEventOptions)
+        elementBelow.dispatchEvent(clickEvent)
+        
+        // 4. Also try focus for input elements
+        if (elementBelow.tagName === 'INPUT' || elementBelow.tagName === 'TEXTAREA' || elementBelow.tagName === 'BUTTON') {
+          elementBelow.focus()
+        }
+      }, 10)
+    } else {
+      console.log('Element not safe or not found')
     }
   }
 
