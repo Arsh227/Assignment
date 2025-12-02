@@ -17,73 +17,8 @@ const HandTracking = () => {
   const virtualCursorRef = useRef({ x: 0, y: 0 })
   const lastClickTimeRef = useRef(0)
   const scrollCooldownRef = useRef(0)
-  const clickInterceptorRef = useRef(null)
 
-  // Add global click interceptor to prevent navigation
-  useEffect(() => {
-    if (!isActive) {
-      // Remove interceptor when inactive
-      if (clickInterceptorRef.current) {
-        document.removeEventListener('click', clickInterceptorRef.current, true)
-        clickInterceptorRef.current = null
-      }
-      return
-    }
-
-    // Intercept all clicks to prevent navigation away from the page
-    const interceptClick = (e) => {
-      const target = e.target
-      
-      // Check if it's a link that would navigate away
-      if (target.tagName === 'A' || target.closest('a')) {
-        const link = target.tagName === 'A' ? target : target.closest('a')
-        const href = link.getAttribute('href')
-        
-        if (href) {
-          // Block external links
-          if (href.startsWith('http://') || href.startsWith('https://')) {
-            const linkUrl = new URL(href, window.location.origin)
-            if (linkUrl.origin !== window.location.origin) {
-              e.preventDefault()
-              e.stopPropagation()
-              console.log('Blocked external navigation:', href)
-              return false
-            }
-          }
-          // Block non-hash, non-same-origin links
-          if (!href.startsWith('#') && !href.startsWith('/') && !href.startsWith(window.location.origin)) {
-            e.preventDefault()
-            e.stopPropagation()
-            return false
-          }
-        }
-      }
-      
-      // Block form submissions that would navigate
-      if (target.tagName === 'FORM' || target.closest('form')) {
-        const form = target.tagName === 'FORM' ? target : target.closest('form')
-        if (form && form.action && !form.action.startsWith('#') && form.action !== window.location.href) {
-          const formUrl = new URL(form.action, window.location.origin)
-          if (formUrl.origin !== window.location.origin) {
-            e.preventDefault()
-            e.stopPropagation()
-            return false
-          }
-        }
-      }
-    }
-
-    // Add interceptor with capture phase to catch events early
-    document.addEventListener('click', interceptClick, true)
-    clickInterceptorRef.current = interceptClick
-
-    return () => {
-      if (clickInterceptorRef.current) {
-        document.removeEventListener('click', clickInterceptorRef.current, true)
-        clickInterceptorRef.current = null
-      }
-    }
-  }, [isActive])
+  // No global click interceptor - we'll handle navigation prevention in performClick only
 
   useEffect(() => {
     if (!isActive) return
@@ -406,27 +341,39 @@ const HandTracking = () => {
     
     // Only click on safe elements
     if (elementBelow && isSafeElement(elementBelow)) {
-      // Prevent default navigation for links
+      // Check if it's a link
       const isLink = elementBelow.tagName === 'A' || elementBelow.closest('a')
+      let link = null
+      let href = null
+      
       if (isLink) {
-        const link = elementBelow.tagName === 'A' ? elementBelow : elementBelow.closest('a')
-        const href = link.getAttribute('href')
+        link = elementBelow.tagName === 'A' ? elementBelow : elementBelow.closest('a')
+        href = link.getAttribute('href')
         
-        // Only allow internal navigation (hash links or same-origin)
-        if (href && !href.startsWith('#') && !href.startsWith('/')) {
-          if (href.startsWith('http://') || href.startsWith('https://')) {
+        // Block external links (different domain)
+        if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+          try {
             const linkUrl = new URL(href, window.location.origin)
             if (linkUrl.origin !== window.location.origin) {
-              console.log('Blocked external link click:', href)
+              console.log('Blocked external link click from hand tracking:', href)
               return // Block external links
             }
-          } else {
-            return // Block other types of links
+          } catch (err) {
+            // Invalid URL, allow it
+          }
+        }
+        
+        // Handle hash links (internal navigation)
+        if (href && href.startsWith('#')) {
+          const target = document.querySelector(href)
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' })
+            return // Don't dispatch click event, we handled it
           }
         }
       }
       
-      // Create click event with preventDefault capability
+      // Create click event (synthetic, not trusted)
       const clickEvent = new MouseEvent('click', {
         view: window,
         bubbles: true,
@@ -435,28 +382,10 @@ const HandTracking = () => {
         clientY: constrainedY,
       })
       
-      // Try to prevent default navigation
-      const prevented = !elementBelow.dispatchEvent(clickEvent)
+      // Dispatch the click event
+      elementBelow.dispatchEvent(clickEvent)
       
-      if (!prevented && isLink) {
-        // If it's a link and event wasn't prevented, manually handle it
-        const link = elementBelow.tagName === 'A' ? elementBelow : elementBelow.closest('a')
-        const href = link.getAttribute('href')
-        
-        if (href && href.startsWith('#')) {
-          // Allow internal hash navigation (smooth scroll to section)
-          const target = document.querySelector(href)
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth' })
-            // Prevent the default link behavior
-            clickEvent.preventDefault()
-          }
-        }
-        // For same-origin links, we've already checked they're safe above
-        // External links are blocked earlier in the function
-      }
-      
-      // Also try mousedown and mouseup for better compatibility
+      // Also dispatch mousedown and mouseup for better compatibility
       const mouseDownEvent = new MouseEvent('mousedown', {
         view: window,
         bubbles: true,
@@ -472,14 +401,10 @@ const HandTracking = () => {
         clientY: constrainedY,
       })
       
-      if (isSafeElement(elementBelow)) {
-        elementBelow.dispatchEvent(mouseDownEvent)
-        setTimeout(() => {
-          if (isSafeElement(elementBelow)) {
-            elementBelow.dispatchEvent(mouseUpEvent)
-          }
-        }, 50)
-      }
+      elementBelow.dispatchEvent(mouseDownEvent)
+      setTimeout(() => {
+        elementBelow.dispatchEvent(mouseUpEvent)
+      }, 50)
     }
   }
 
