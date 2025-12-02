@@ -150,15 +150,12 @@ const HandTracking = () => {
       const initializeCamera = async () => {
         console.log('Initializing camera, video readyState:', video.readyState)
         
-        // Import Camera if not already imported
-        let CameraClass = Camera
-        if (!CameraClass) {
-          const cameraModule = await import('@mediapipe/camera_utils')
-          CameraClass = cameraModule.Camera
-        }
-        
         if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
           console.log('Video is ready, creating Camera instance...')
+          
+          if (!CameraClass || typeof CameraClass !== 'function') {
+            throw new Error(`Camera class not available. Type: ${typeof CameraClass}`)
+          }
           
           let frameSendCount = 0
           camera = new CameraClass(video, {
