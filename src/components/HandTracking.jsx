@@ -46,14 +46,38 @@ const HandTracking = () => {
         const handsModule = await import('@mediapipe/hands')
         const cameraModule = await import('@mediapipe/camera_utils')
         
-        // Hands is exported directly - check node output: Hands: [Function: od]
-        const Hands = handsModule.Hands
-        const CameraClass = cameraModule.Camera
+        console.log('Raw handsModule:', handsModule)
+        console.log('Raw cameraModule:', cameraModule)
+        
+        // Try to get Hands - it might be in different places after bundling
+        let Hands = null
+        if (handsModule.Hands) {
+          Hands = handsModule.Hands
+        } else if (handsModule.default && handsModule.default.Hands) {
+          Hands = handsModule.default.Hands
+        } else if (handsModule.default && typeof handsModule.default === 'function') {
+          Hands = handsModule.default
+        } else if (typeof handsModule === 'function') {
+          Hands = handsModule
+        }
+        
+        // Try to get Camera
+        let CameraClass = null
+        if (cameraModule.Camera) {
+          CameraClass = cameraModule.Camera
+        } else if (cameraModule.default && cameraModule.default.Camera) {
+          CameraClass = cameraModule.default.Camera
+        } else if (cameraModule.default && typeof cameraModule.default === 'function') {
+          CameraClass = cameraModule.default
+        } else if (typeof cameraModule === 'function') {
+          CameraClass = cameraModule
+        }
         
         console.log('MediaPipe modules loaded:', { 
           Hands: !!Hands,
           HandsType: typeof Hands,
           HandsIsFunction: typeof Hands === 'function',
+          HandsConstructor: Hands?.prototype?.constructor,
           Camera: !!CameraClass,
           CameraType: typeof CameraClass,
           handsModuleKeys: Object.keys(handsModule),
@@ -61,7 +85,7 @@ const HandTracking = () => {
         })
         
         if (!Hands) {
-          console.error('Hands not found. Module structure:', handsModule)
+          console.error('Hands not found. Full module:', handsModule)
           throw new Error('Hands class not found in MediaPipe module')
         }
         
@@ -70,8 +94,14 @@ const HandTracking = () => {
           throw new Error(`Hands is not a constructor. Type: ${typeof Hands}`)
         }
         
-        console.log('Creating Hands instance with type:', typeof Hands)
-        hands = new Hands({
+        // Verify it's actually a constructor
+        try {
+          console.log('Testing Hands constructor...')
+          // Don't actually create it yet, just verify
+          const testProto = Hands.prototype
+          console.log('Hands.prototype:', testProto)
+          console.log('Creating Hands instance...')
+          hands = new Hands({
           locateFile: (file) => {
             const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
             console.log('Loading MediaPipe file:', file, 'from', url)
