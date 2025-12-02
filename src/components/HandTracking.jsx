@@ -50,8 +50,8 @@ const HandTracking = () => {
       hands.setOptions({
         maxNumHands: 1,
         modelComplexity: 1,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
+        minDetectionConfidence: 0.3, // Lowered for easier detection
+        minTrackingConfidence: 0.3, // Lowered for easier tracking
       })
 
       hands.onResults((results) => {
@@ -74,9 +74,24 @@ const HandTracking = () => {
             
             // Process gestures
             processGestures(landmarks, canvas.width, canvas.height)
+            
+            // Update status to show hand detected (only update once)
+            setStatus(prevStatus => {
+              if (prevStatus !== 'Hand detected! Move your index finger to control cursor.') {
+                return 'Hand detected! Move your index finger to control cursor.'
+              }
+              return prevStatus
+            })
           } else {
             handLandmarksRef.current = null
             setGesture('')
+            // Update status to prompt user to show hand
+            setStatus(prevStatus => {
+              if (prevStatus.includes('Hand detected')) {
+                return 'Hand tracking active! Show your hand to the camera.'
+              }
+              return prevStatus
+            })
           }
 
           ctx.restore()
@@ -87,28 +102,39 @@ const HandTracking = () => {
 
       handsRef.current = hands
 
-      // Initialize camera
-      camera = new Camera(video, {
-        onFrame: async () => {
-          try {
-            if (hands && video.readyState === video.HAVE_ENOUGH_DATA) {
-              await hands.send({ image: video })
-            }
-          } catch (error) {
-            console.error('Error sending frame to MediaPipe:', error)
-          }
-        },
-        width: 640,
-        height: 480,
-      })
+      // Wait for video to be ready before initializing camera
+      const initializeCamera = () => {
+        if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+          camera = new Camera(video, {
+            onFrame: async () => {
+              try {
+                if (hands && video.readyState === video.HAVE_ENOUGH_DATA) {
+                  await hands.send({ image: video })
+                }
+              } catch (error) {
+                console.error('Error sending frame to MediaPipe:', error)
+              }
+            },
+            width: 640,
+            height: 480,
+          })
+          
+          camera.start().then(() => {
+            console.log('Camera started successfully')
+            setStatus('Hand tracking active! Show your hand to the camera.')
+          }).catch((error) => {
+            console.error('Error starting camera:', error)
+            setStatus('Error starting camera: ' + error.message)
+          })
+          
+          cameraRef.current = camera
+        } else {
+          // Wait for video to load
+          video.addEventListener('loadeddata', initializeCamera, { once: true })
+        }
+      }
       
-      camera.start().catch((error) => {
-        console.error('Error starting camera:', error)
-        setStatus('Error starting camera: ' + error.message)
-      })
-      
-      cameraRef.current = camera
-      setStatus('Hand tracking active! Show your hand to the camera.')
+      initializeCamera()
 
       // Set canvas size
       const updateCanvasSize = () => {
@@ -158,9 +184,10 @@ const HandTracking = () => {
   }, [])
 
   const drawHandLandmarks = (ctx, landmarks, width, height) => {
+    // Make landmarks more visible
     ctx.strokeStyle = '#00ff00'
     ctx.fillStyle = '#00ff00'
-    ctx.lineWidth = 2
+    ctx.lineWidth = 3 // Increased line width for visibility
 
     // Draw connections
     const connections = [
@@ -203,8 +230,13 @@ const HandTracking = () => {
       
       ctx.fillStyle = color
       ctx.beginPath()
-      ctx.arc(x, y, 8, 0, Math.PI * 2)
+      ctx.arc(x, y, 10, 0, Math.PI * 2) // Increased size for visibility
       ctx.fill()
+      
+      // Add a border for better visibility
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 2
+      ctx.stroke()
     })
   }
 
