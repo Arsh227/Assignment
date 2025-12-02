@@ -17,6 +17,73 @@ const HandTracking = () => {
   const virtualCursorRef = useRef({ x: 0, y: 0 })
   const lastClickTimeRef = useRef(0)
   const scrollCooldownRef = useRef(0)
+  const clickInterceptorRef = useRef(null)
+
+  // Add global click interceptor to prevent navigation
+  useEffect(() => {
+    if (!isActive) {
+      // Remove interceptor when inactive
+      if (clickInterceptorRef.current) {
+        document.removeEventListener('click', clickInterceptorRef.current, true)
+        clickInterceptorRef.current = null
+      }
+      return
+    }
+
+    // Intercept all clicks to prevent navigation away from the page
+    const interceptClick = (e) => {
+      const target = e.target
+      
+      // Check if it's a link that would navigate away
+      if (target.tagName === 'A' || target.closest('a')) {
+        const link = target.tagName === 'A' ? target : target.closest('a')
+        const href = link.getAttribute('href')
+        
+        if (href) {
+          // Block external links
+          if (href.startsWith('http://') || href.startsWith('https://')) {
+            const linkUrl = new URL(href, window.location.origin)
+            if (linkUrl.origin !== window.location.origin) {
+              e.preventDefault()
+              e.stopPropagation()
+              console.log('Blocked external navigation:', href)
+              return false
+            }
+          }
+          // Block non-hash, non-same-origin links
+          if (!href.startsWith('#') && !href.startsWith('/') && !href.startsWith(window.location.origin)) {
+            e.preventDefault()
+            e.stopPropagation()
+            return false
+          }
+        }
+      }
+      
+      // Block form submissions that would navigate
+      if (target.tagName === 'FORM' || target.closest('form')) {
+        const form = target.tagName === 'FORM' ? target : target.closest('form')
+        if (form && form.action && !form.action.startsWith('#') && form.action !== window.location.href) {
+          const formUrl = new URL(form.action, window.location.origin)
+          if (formUrl.origin !== window.location.origin) {
+            e.preventDefault()
+            e.stopPropagation()
+            return false
+          }
+        }
+      }
+    }
+
+    // Add interceptor with capture phase to catch events early
+    document.addEventListener('click', interceptClick, true)
+    clickInterceptorRef.current = interceptClick
+
+    return () => {
+      if (clickInterceptorRef.current) {
+        document.removeEventListener('click', clickInterceptorRef.current, true)
+        clickInterceptorRef.current = null
+      }
+    }
+  }, [isActive])
 
   useEffect(() => {
     if (!isActive) return
@@ -243,7 +310,56 @@ const HandTracking = () => {
     }
   }
 
+  const isSafeElement = (element) => {
+    if (!element) return false
+    
+    // Don't interact with the cursor itself or video/canvas elements
+    if (element.id === 'virtual-hand-cursor' || 
+        element.tagName === 'VIDEO' || 
+        element.tagName === 'CANVAS' ||
+        element.closest('video') ||
+        element.closest('canvas')) {
+      return false
+    }
+    
+    // Don't interact with links that navigate away
+    if (element.tagName === 'A') {
+      const href = element.getAttribute('href')
+      // Only allow internal links (starting with #) or same-origin links
+      if (href && !href.startsWith('#') && !href.startsWith('/')) {
+        return false
+      }
+      // Block external links
+      if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+        const linkUrl = new URL(href, window.location.origin)
+        if (linkUrl.origin !== window.location.origin) {
+          return false
+        }
+      }
+    }
+    
+    // Don't interact with form elements that might submit
+    if (element.tagName === 'FORM' || element.closest('form')) {
+      const form = element.tagName === 'FORM' ? element : element.closest('form')
+      if (form && form.action && !form.action.startsWith('#')) {
+        return false
+      }
+    }
+    
+    // Only interact with elements within the main website container
+    const mainContainer = document.querySelector('body')
+    if (!mainContainer || !mainContainer.contains(element)) {
+      return false
+    }
+    
+    return true
+  }
+
   const moveVirtualCursor = (x, y) => {
+    // Constrain cursor to viewport
+    const constrainedX = Math.max(0, Math.min(x, window.innerWidth))
+    const constrainedY = Math.max(0, Math.min(y, window.innerHeight))
+    
     // Create or update virtual cursor element
     let cursor = document.getElementById('virtual-hand-cursor')
     if (!cursor) {
@@ -264,64 +380,134 @@ const HandTracking = () => {
       document.body.appendChild(cursor)
     }
     
-    cursor.style.left = `${x}px`
-    cursor.style.top = `${y}px`
+    cursor.style.left = `${constrainedX}px`
+    cursor.style.top = `${constrainedY}px`
 
-    // Trigger mouse move events on elements under cursor
-    const elementBelow = document.elementFromPoint(x, y)
-    if (elementBelow && elementBelow !== cursor) {
-      const rect = elementBelow.getBoundingClientRect()
+    // Trigger mouse move events only on safe elements
+    const elementBelow = document.elementFromPoint(constrainedX, constrainedY)
+    if (elementBelow && elementBelow !== cursor && isSafeElement(elementBelow)) {
       const mouseEvent = new MouseEvent('mousemove', {
         view: window,
         bubbles: true,
         cancelable: true,
-        clientX: x,
-        clientY: y,
+        clientX: constrainedX,
+        clientY: constrainedY,
       })
       elementBelow.dispatchEvent(mouseEvent)
     }
   }
 
   const performClick = (x, y) => {
-    const elementBelow = document.elementFromPoint(x, y)
-    if (elementBelow) {
+    // Constrain click to viewport
+    const constrainedX = Math.max(0, Math.min(x, window.innerWidth))
+    const constrainedY = Math.max(0, Math.min(y, window.innerHeight))
+    
+    const elementBelow = document.elementFromPoint(constrainedX, constrainedY)
+    
+    // Only click on safe elements
+    if (elementBelow && isSafeElement(elementBelow)) {
+      // Prevent default navigation for links
+      const isLink = elementBelow.tagName === 'A' || elementBelow.closest('a')
+      if (isLink) {
+        const link = elementBelow.tagName === 'A' ? elementBelow : elementBelow.closest('a')
+        const href = link.getAttribute('href')
+        
+        // Only allow internal navigation (hash links or same-origin)
+        if (href && !href.startsWith('#') && !href.startsWith('/')) {
+          if (href.startsWith('http://') || href.startsWith('https://')) {
+            const linkUrl = new URL(href, window.location.origin)
+            if (linkUrl.origin !== window.location.origin) {
+              console.log('Blocked external link click:', href)
+              return // Block external links
+            }
+          } else {
+            return // Block other types of links
+          }
+        }
+      }
+      
+      // Create click event with preventDefault capability
       const clickEvent = new MouseEvent('click', {
         view: window,
         bubbles: true,
         cancelable: true,
-        clientX: x,
-        clientY: y,
+        clientX: constrainedX,
+        clientY: constrainedY,
       })
-      elementBelow.dispatchEvent(clickEvent)
+      
+      // Try to prevent default navigation
+      const prevented = !elementBelow.dispatchEvent(clickEvent)
+      
+      if (!prevented && isLink) {
+        // If it's a link and event wasn't prevented, manually handle it
+        const link = elementBelow.tagName === 'A' ? elementBelow : elementBelow.closest('a')
+        const href = link.getAttribute('href')
+        
+        if (href && href.startsWith('#')) {
+          // Allow internal hash navigation (smooth scroll to section)
+          const target = document.querySelector(href)
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' })
+            // Prevent the default link behavior
+            clickEvent.preventDefault()
+          }
+        }
+        // For same-origin links, we've already checked they're safe above
+        // External links are blocked earlier in the function
+      }
       
       // Also try mousedown and mouseup for better compatibility
       const mouseDownEvent = new MouseEvent('mousedown', {
         view: window,
         bubbles: true,
         cancelable: true,
-        clientX: x,
-        clientY: y,
+        clientX: constrainedX,
+        clientY: constrainedY,
       })
       const mouseUpEvent = new MouseEvent('mouseup', {
         view: window,
         bubbles: true,
         cancelable: true,
-        clientX: x,
-        clientY: y,
+        clientX: constrainedX,
+        clientY: constrainedY,
       })
-      elementBelow.dispatchEvent(mouseDownEvent)
-      setTimeout(() => {
-        elementBelow.dispatchEvent(mouseUpEvent)
-      }, 50)
+      
+      if (isSafeElement(elementBelow)) {
+        elementBelow.dispatchEvent(mouseDownEvent)
+        setTimeout(() => {
+          if (isSafeElement(elementBelow)) {
+            elementBelow.dispatchEvent(mouseUpEvent)
+          }
+        }, 50)
+      }
     }
   }
 
   const performScroll = (direction) => {
+    // Only scroll within the current page, don't navigate
     const scrollAmount = direction === 'up' ? -100 : 100
-    window.scrollBy({
-      top: scrollAmount,
-      behavior: 'smooth',
-    })
+    
+    // Get the main scrollable container (usually body or html)
+    const scrollContainer = document.documentElement.scrollHeight > window.innerHeight 
+      ? document.documentElement 
+      : document.body
+    
+    // Calculate new scroll position
+    const currentScroll = window.pageYOffset || document.documentElement.scrollTop
+    const maxScroll = Math.max(
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight
+    ) - window.innerHeight
+    
+    const newScroll = Math.max(0, Math.min(maxScroll, currentScroll + scrollAmount))
+    
+    // Only scroll if we're within bounds
+    if (newScroll !== currentScroll) {
+      window.scrollTo({
+        top: newScroll,
+        behavior: 'smooth',
+      })
+    }
   }
 
   const checkPermissions = async () => {
@@ -581,6 +767,16 @@ const HandTracking = () => {
           <li><strong style={{ color: '#ffff00' }}>Scroll Up:</strong> Raise all 4 fingers (index, middle, ring, pinky)</li>
           <li><strong style={{ color: '#ff00ff' }}>Scroll Down:</strong> Lower all 4 fingers</li>
         </ul>
+        <p style={{ 
+          marginTop: '10px', 
+          padding: '8px', 
+          background: 'rgba(0, 255, 255, 0.1)', 
+          borderRadius: '5px',
+          fontSize: '13px',
+          color: '#00ffff'
+        }}>
+          <strong>Note:</strong> Hand tracking only controls elements within this website. External links and navigation are blocked for safety.
+        </p>
       </div>
     </div>
   )
