@@ -39,147 +39,23 @@ const HandTracking = () => {
     let hands = null
     let camera = null
     
-    // Initialize MediaPipe Hands - use async function
-    const initializeMediaPipe = async () => {
+    // Initialize MediaPipe Hands - using static imports
+    const initializeMediaPipe = () => {
       try {
         console.log('Initializing MediaPipe Hands...')
+        console.log('Hands class:', Hands)
+        console.log('Hands type:', typeof Hands)
+        console.log('Camera class:', Camera)
+        console.log('Camera type:', typeof Camera)
         
-        // Dynamically import MediaPipe Hands
-        const handsModule = await import('@mediapipe/hands')
-        const cameraModule = await import('@mediapipe/camera_utils')
-        
-        // Log full module structure to understand what Vite is giving us
-        console.log('Raw handsModule:', handsModule)
-        console.log('handsModule keys:', Object.keys(handsModule))
-        console.log('handsModule.getOwnPropertyNames:', Object.getOwnPropertyNames(handsModule))
-        console.log('handsModule.default:', handsModule.default)
-        console.log('handsModule.Hands:', handsModule.Hands)
-        console.log('typeof handsModule:', typeof handsModule)
-        
-        // Try to access Hands - check all possible locations including non-enumerable
-        let Hands = null
-        
-        // Method 1: Direct property access
-        if (handsModule.Hands) {
-          Hands = handsModule.Hands
-          console.log('Found Hands via handsModule.Hands')
-        }
-        // Method 2: Check default export with all property descriptors
-        else if (handsModule.default) {
-          const defaultExport = handsModule.default
-          console.log('defaultExport:', defaultExport)
-          console.log('defaultExport keys:', Object.keys(defaultExport))
-          console.log('defaultExport getOwnPropertyNames:', Object.getOwnPropertyNames(defaultExport))
-          console.log('defaultExport.Hands:', defaultExport.Hands)
-          console.log('typeof defaultExport:', typeof defaultExport)
-          
-          // Check if Hands is directly on default (even if non-enumerable)
-          if ('Hands' in defaultExport) {
-            Hands = defaultExport.Hands
-            console.log('Found Hands via defaultExport.Hands (using "in" operator)')
-          }
-          // Check if default itself is the Hands constructor
-          else if (typeof defaultExport === 'function' && defaultExport.prototype) {
-            Hands = defaultExport
-            console.log('Found Hands - defaultExport is the constructor')
-          }
-          // Check all enumerable properties
-          else {
-            console.log('Searching through defaultExport enumerable properties...')
-            for (const key in defaultExport) {
-              const value = defaultExport[key]
-              console.log(`Checking defaultExport.${key}:`, typeof value, value)
-              if (value && typeof value === 'function' && value.prototype) {
-                console.log(`Found potential Hands constructor at defaultExport.${key}`)
-                Hands = value
-                break
-              }
-            }
-          }
-          
-          // Check non-enumerable properties
-          if (!Hands) {
-            console.log('Checking non-enumerable properties...')
-            const allProps = Object.getOwnPropertyNames(defaultExport)
-            for (const prop of allProps) {
-              if (prop !== 'constructor' && prop !== '__proto__') {
-                try {
-                  const value = defaultExport[prop]
-                  console.log(`Checking non-enumerable ${prop}:`, typeof value, value)
-                  if (value && typeof value === 'function' && value.prototype) {
-                    console.log(`Found potential Hands constructor at non-enumerable ${prop}`)
-                    Hands = value
-                    break
-                  }
-                } catch (e) {
-                  console.log(`Cannot access ${prop}:`, e.message)
-                }
-              }
-            }
-          }
-        }
-        
-        // Method 3: Try accessing via bracket notation with common names
-        if (!Hands) {
-          const possibleNames = ['Hands', 'hands', 'HANDS', 'default', 'HandsSolution']
-          for (const name of possibleNames) {
-            if (handsModule[name] && typeof handsModule[name] === 'function') {
-              Hands = handsModule[name]
-              console.log(`Found Hands via handsModule['${name}']`)
-              break
-            }
-          }
-        }
-        
-        // Try to get Camera
-        let CameraClass = null
-        if (cameraModule.Camera) {
-          CameraClass = cameraModule.Camera
-        } else if (cameraModule.default?.Camera) {
-          CameraClass = cameraModule.default.Camera
-        } else if (cameraModule.default && typeof cameraModule.default === 'function') {
-          CameraClass = cameraModule.default
-        } else {
-          // Try finding it in all properties
-          for (const key in cameraModule) {
-            const value = cameraModule[key]
-            if (value && typeof value === 'function' && value.prototype) {
-              CameraClass = value
-              break
-            }
-          }
-        }
-        
-        console.log('MediaPipe modules loaded:', { 
-          Hands: !!Hands,
-          HandsType: typeof Hands,
-          HandsIsFunction: typeof Hands === 'function',
-          Camera: !!CameraClass,
-          CameraType: typeof CameraClass,
-          handsModuleKeys: Object.keys(handsModule),
-          cameraModuleKeys: Object.keys(cameraModule)
-        })
-        
-        if (!Hands) {
-          console.error('Hands not found. Full module structure:', {
-            keys: Object.keys(handsModule),
-            default: handsModule.default,
-            hasHands: 'Hands' in handsModule,
-            moduleType: typeof handsModule,
-            allValues: Object.values(handsModule).map(v => typeof v)
-          })
-          throw new Error('Hands class not found in MediaPipe module')
-        }
-        
-        if (typeof Hands !== 'function') {
-          console.error('Hands is not a function. Type:', typeof Hands, 'Value:', Hands)
+        if (!Hands || typeof Hands !== 'function') {
           throw new Error(`Hands is not a constructor. Type: ${typeof Hands}`)
         }
         
-        // Verify it's actually a constructor
-        console.log('Testing Hands constructor...')
-        const testProto = Hands.prototype
-        console.log('Hands.prototype:', testProto)
+        if (!Camera || typeof Camera !== 'function') {
+          throw new Error(`Camera is not a constructor. Type: ${typeof Camera}`)
+        }
+        
         console.log('Creating Hands instance...')
         hands = new Hands({
           locateFile: (file) => {
