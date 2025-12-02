@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { Hands } from '@mediapipe/hands'
+import { Camera } from '@mediapipe/camera_utils'
 
 const HandTracking = () => {
   const videoRef = useRef(null)
@@ -49,51 +51,84 @@ const HandTracking = () => {
         // Log full module structure to understand what Vite is giving us
         console.log('Raw handsModule:', handsModule)
         console.log('handsModule keys:', Object.keys(handsModule))
+        console.log('handsModule.getOwnPropertyNames:', Object.getOwnPropertyNames(handsModule))
         console.log('handsModule.default:', handsModule.default)
         console.log('handsModule.Hands:', handsModule.Hands)
         console.log('typeof handsModule:', typeof handsModule)
         
-        // The module only has a default export, so Hands must be inside default
+        // Try to access Hands - check all possible locations including non-enumerable
         let Hands = null
         
-        if (handsModule.default) {
+        // Method 1: Direct property access
+        if (handsModule.Hands) {
+          Hands = handsModule.Hands
+          console.log('Found Hands via handsModule.Hands')
+        }
+        // Method 2: Check default export with all property descriptors
+        else if (handsModule.default) {
           const defaultExport = handsModule.default
+          console.log('defaultExport:', defaultExport)
           console.log('defaultExport keys:', Object.keys(defaultExport))
+          console.log('defaultExport getOwnPropertyNames:', Object.getOwnPropertyNames(defaultExport))
           console.log('defaultExport.Hands:', defaultExport.Hands)
           console.log('typeof defaultExport:', typeof defaultExport)
           
-          // Check if Hands is directly on default
-          if (defaultExport.Hands) {
+          // Check if Hands is directly on default (even if non-enumerable)
+          if ('Hands' in defaultExport) {
             Hands = defaultExport.Hands
-            console.log('Found Hands via defaultExport.Hands')
-          } 
+            console.log('Found Hands via defaultExport.Hands (using "in" operator)')
+          }
           // Check if default itself is the Hands constructor
           else if (typeof defaultExport === 'function' && defaultExport.prototype) {
             Hands = defaultExport
             console.log('Found Hands - defaultExport is the constructor')
           }
-          // Check all properties of defaultExport
+          // Check all enumerable properties
           else {
-            console.log('Searching through defaultExport properties...')
+            console.log('Searching through defaultExport enumerable properties...')
             for (const key in defaultExport) {
               const value = defaultExport[key]
               console.log(`Checking defaultExport.${key}:`, typeof value, value)
               if (value && typeof value === 'function' && value.prototype) {
-                // Check if it looks like a constructor (has prototype.constructor)
-                if (value.prototype.constructor === value) {
-                  console.log(`Found potential Hands constructor at defaultExport.${key}`)
-                  Hands = value
-                  break
+                console.log(`Found potential Hands constructor at defaultExport.${key}`)
+                Hands = value
+                break
+              }
+            }
+          }
+          
+          // Check non-enumerable properties
+          if (!Hands) {
+            console.log('Checking non-enumerable properties...')
+            const allProps = Object.getOwnPropertyNames(defaultExport)
+            for (const prop of allProps) {
+              if (prop !== 'constructor' && prop !== '__proto__') {
+                try {
+                  const value = defaultExport[prop]
+                  console.log(`Checking non-enumerable ${prop}:`, typeof value, value)
+                  if (value && typeof value === 'function' && value.prototype) {
+                    console.log(`Found potential Hands constructor at non-enumerable ${prop}`)
+                    Hands = value
+                    break
+                  }
+                } catch (e) {
+                  console.log(`Cannot access ${prop}:`, e.message)
                 }
               }
             }
           }
         }
         
-        // Fallback: check direct module properties
-        if (!Hands && handsModule.Hands) {
-          Hands = handsModule.Hands
-          console.log('Found Hands via handsModule.Hands')
+        // Method 3: Try accessing via bracket notation with common names
+        if (!Hands) {
+          const possibleNames = ['Hands', 'hands', 'HANDS', 'default', 'HandsSolution']
+          for (const name of possibleNames) {
+            if (handsModule[name] && typeof handsModule[name] === 'function') {
+              Hands = handsModule[name]
+              console.log(`Found Hands via handsModule['${name}']`)
+              break
+            }
+          }
         }
         
         // Try to get Camera
@@ -233,18 +268,18 @@ const HandTracking = () => {
       handsRef.current = hands
 
       // Wait for video to be ready before initializing camera
-      const initializeCamera = async () => {
+      const initializeCamera = () => {
         console.log('Initializing camera, video readyState:', video.readyState)
         
         if (video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
           console.log('Video is ready, creating Camera instance...')
           
-          if (!CameraClass || typeof CameraClass !== 'function') {
-            throw new Error(`Camera class not available. Type: ${typeof CameraClass}`)
+          if (!Camera || typeof Camera !== 'function') {
+            throw new Error(`Camera class not available. Type: ${typeof Camera}`)
           }
           
           let frameSendCount = 0
-          camera = new CameraClass(video, {
+          camera = new Camera(video, {
             onFrame: async () => {
               try {
                 frameSendCount++
